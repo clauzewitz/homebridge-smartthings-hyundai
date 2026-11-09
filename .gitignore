@@ -1,0 +1,37 @@
+# Harness / agent local settings — never commit
+.harness.yaml
+.claude/
+.codex/
+
+# Internal design notes (analysis, decisions, plan) — kept local for now
+/docs/
+
+# Secrets
+.env
+.env.*
+*.pem
+tokens.json
+
+# Local Homebridge storage used by `npm run watch` (contains pairing data and tokens)
+.homebridge-dev/
+
+# Build output
+dist
+*.tsbuildinfo
+
+# Dependencies
+node_modules/
+
+# Test coverage
+coverage
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# npm pack output
+*.tgz
+
+# OS
+.DS_Store

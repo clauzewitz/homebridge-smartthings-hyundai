@@ -1,0 +1,45 @@
+THIRD-PARTY NOTICES
+===================
+
+This project includes material derived from the third-party software listed
+below. The original license terms are reproduced as required.
+
+이 프로젝트에는 아래 제3자 소프트웨어에서 파생된 내용이 포함되어 있으며,
+원 라이선스가 요구하는 고지를 아래에 그대로 싣습니다.
+
+-------------------------------------------------------------------------------
+smartthings-vehicle-ha
+https://github.com/gomeng-dev/smartthings-vehicle-ha
+Referenced revision: commit 5cba3c2 (v0.7.3)
+
+Used for / 사용 범위:
+- The SmartThings vehicle capability/attribute/command mapping, vehicle
+  discovery rule and status parsing logic were ported from Python to
+  TypeScript (src/smartthings/).
+  SmartThings 차량 capability·attribute·명령 매핑, 차량 탐색 규칙, status
+  파싱 로직을 Python 에서 TypeScript 로 옮겼습니다 (src/smartthings/).
+- Test fixture values derived from the original test suite (test/fixtures/).
+  원 저장소 테스트의 픽스처 값을 가져와 사용했습니다 (test/fixtures/).
+
+MIT License
+
+Copyright (c) 2026 gomeng-dev
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+-------------------------------------------------------------------------------

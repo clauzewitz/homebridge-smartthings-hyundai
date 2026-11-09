@@ -1,0 +1,68 @@
+{
+  "pluginAlias": "SmartThingsHyundai",
+  "pluginType": "platform",
+  "singular": true,
+  "strictValidation": false,
+  "headerDisplay": "SmartThings 에 등록된 현대·제네시스·기아 차량을 HomeKit 에 연결합니다. / Connects Hyundai, Genesis and Kia vehicles registered in SmartThings to HomeKit.",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "이름 / Name",
+        "type": "string",
+        "default": "SmartThings Hyundai"
+      },
+      "pollingInterval": {
+        "title": "상태 조회 주기(초) / Polling interval (seconds)",
+        "type": "integer",
+        "default": 60,
+        "minimum": 30,
+        "description": "SmartThings 는 디바이스당 분당 12회로 요청을 제한합니다. / SmartThings limits requests to 12 per minute per device."
+      },
+      "allowUnlock": {
+        "title": "잠금 해제 허용 / Allow unlock",
+        "type": "boolean",
+        "default": true,
+        "description": "끄면 HomeKit 의 잠금 해제 요청을 거부합니다. 잠금 상태는 계속 표시됩니다. / When off, unlock requests from HomeKit are rejected. Lock state is still shown."
+      },
+      "allowClimate": {
+        "title": "원격 공조 허용 / Allow remote climate",
+        "type": "boolean",
+        "default": true,
+        "description": "끄면 공조(원격 시동 포함) 켜기 요청을 거부합니다. 공조 상태는 계속 표시됩니다. / When off, requests to turn on climate (remote start) are rejected. Climate state is still shown."
+      },
+      "climateAsSwitch": {
+        "title": "공조를 스위치로 등록 / Expose climate as a switch",
+        "type": "boolean",
+        "default": false,
+        "description": "켜면 에어컨 대신 스위치로 등록해 '에어컨 다 켜줘' 같은 Siri 명령에서 빠집니다. 목표 온도는 아래 고정값을 씁니다. / When on, climate is exposed as a switch instead of an air conditioner so that Siri commands such as 'turn on all ACs' skip the vehicle. The fixed temperature below is used."
+      },
+      "climateTemperature": {
+        "title": "공조 온도(℃) / Climate temperature (°C)",
+        "type": "integer",
+        "default": 22,
+        "minimum": 17,
+        "maximum": 27,
+        "description": "스위치 모드의 고정 온도이자 에어컨 모드의 초기 목표 온도입니다. / Fixed temperature in switch mode and initial target temperature in air-conditioner mode."
+      },
+      "climateDuration": {
+        "title": "공조 작동 시간(분) / Climate duration (minutes)",
+        "type": "integer",
+        "default": 10,
+        "minimum": 1,
+        "maximum": 30
+      },
+      "climateDefog": {
+        "title": "앞유리 김서림 제거 / Windshield defog",
+        "type": "boolean",
+        "default": false
+      },
+      "exposeRangeAsLightSensor": {
+        "title": "주행 가능 거리를 조도 센서로 표시 / Show driving range as a light sensor",
+        "type": "boolean",
+        "default": false,
+        "description": "HomeKit 에 거리 타입이 없어 lux 값으로 km 를 표시하는 편법입니다. / HomeKit has no distance type; this shows km as a lux value."
+      }
+    }
+  }
+}

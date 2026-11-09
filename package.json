@@ -1,0 +1,46 @@
+{
+  "name": "homebridge-smartthings-hyundai",
+  "displayName": "SmartThings Hyundai Vehicle",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Homebridge plugin for Hyundai, Genesis and Kia vehicles registered in SmartThings (Korea).",
+  "author": "clauzewitz",
+  "license": "MIT",
+  "keywords": [
+    "homebridge-plugin",
+    "supports-hap",
+    "smartthings",
+    "hyundai",
+    "genesis",
+    "kia"
+  ],
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "config.schema.json",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES"
+  ],
+  "engines": {
+    "node": "^22.12.0 || ^24.0.0 || ^26.0.0",
+    "homebridge": "^1.8.0 || ^2.0.0"
+  },
+  "scripts": {
+    "build": "rimraf ./dist && tsc",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run",
+    "watch": "npm run build && npm link && nodemon"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.14.0",
+    "homebridge": "^2.5.0",
+    "nodemon": "^3.1.14",
+    "rimraf": "^6.1.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.2",
+    "vitest": "^5.1.0"
+  }
+}
