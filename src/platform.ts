@@ -2,6 +2,7 @@ import type { API, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformCo
 
 import { VehicleAccessory, type VehicleAccessoryContext, type VehicleApi } from './accessory/vehicleAccessory.js';
 import { PatTokenProvider } from './auth/pat.js';
+import { createPollingStatusSource } from './status/pollingStatusSource.js';
 import { parseOptions, readPersonalAccessToken, type PluginOptions } from './config.js';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js';
 import { SmartThingsClient, type TokenProvider } from './smartthings/client.js';
@@ -164,7 +165,8 @@ export class SmartThingsHyundaiPlatform implements DynamicPlatformPlugin {
     if (this.vehicles.has(accessory.UUID) || !this.client) {
       return;
     }
-    const vehicle = new VehicleAccessory(this.api, this.log, this.options, this.client, accessory);
+    const statusSource = createPollingStatusSource(this.client, this.options.pollingIntervalSeconds * 1000);
+    const vehicle = new VehicleAccessory(this.api, this.log, this.options, this.client, accessory, statusSource);
     this.vehicles.set(accessory.UUID, vehicle);
     vehicle.start();
   }

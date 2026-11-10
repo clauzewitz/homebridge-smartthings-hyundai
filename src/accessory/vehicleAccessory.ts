@@ -18,9 +18,9 @@ import {
   type VehicleDevice,
   type VehicleStatus,
 } from '../smartthings/vehicle.js';
-import { StatusPoller } from './statusPoller.js';
+import type { StatusSource, StatusSourceFactory } from '../status/statusSource.js';
 
-/** The subset of SmartThingsClient the accessory needs; a mock in tests. */
+/** The subset of SmartThingsClient the accessory and its status source need; a mock in tests. */
 export interface VehicleApi {
   getStatus(deviceId: string): Promise<VehicleStatus>;
   executeCommand(deviceId: string, command: VehicleCommand): Promise<CommandResult>;
@@ -89,7 +89,7 @@ function errorMessage(error: unknown): string {
  */
 export class VehicleAccessory {
   private readonly hap: API['hap'];
-  private readonly poller: StatusPoller;
+  private readonly source: StatusSource;
   private readonly boundServices = new Set<string>();
   /** Value readers per bound characteristic, used for onGet and for pushing new status values. */
   private readonly readers = new Map<Characteristic, (status: VehicleStatus) => CharacteristicValue>();
@@ -107,11 +107,12 @@ export class VehicleAccessory {
     private readonly options: PluginOptions,
     private readonly client: VehicleApi,
     public readonly accessory: PlatformAccessory<VehicleAccessoryContext>,
+    createStatusSource: StatusSourceFactory,
   ) {
     this.hap = api.hap;
-    this.poller = new StatusPoller({
-      pollIntervalMs: options.pollingIntervalSeconds * 1000,
-      read: () => this.readStatus(),
+    this.source = createStatusSource({
+      deviceId: () => this.device.deviceId,
+      sink: { onStatus: (status) => this.handleStatus(status), onReadFailure: (error) => this.handleReadFailure(error) },
       log: { debug: (message) => this.log.debug(this.prefix(message)), warn: (message) => this.log.warn(this.prefix(message)) },
     });
     this.setupConfigServices();
@@ -126,11 +127,11 @@ export class VehicleAccessory {
   }
 
   start(): void {
-    this.poller.start();
+    this.source.start();
   }
 
   stop(): void {
-    this.poller.stop();
+    this.source.stop();
     for (const timer of this.timers) {
       clearTimeout(timer);
     }
@@ -343,24 +344,25 @@ export class VehicleAccessory {
   // Status
   // -------------------------------------------------------------------------
 
-  private async readStatus(): Promise<void> {
-    try {
-      const status = await this.client.getStatus(this.device.deviceId);
-      if (this.failed) {
-        this.log.info(this.prefix('SmartThings 연결이 복구됐습니다. / SmartThings connection restored.'));
-      }
-      this.failed = false;
-      this.log.debug(this.prefix(`상태 갱신 / Status updated (lastUpdated ${status.lastUpdated?.toISOString() ?? '-'})`));
-      this.applyStatus(status);
-    } catch (error) {
-      if (!this.failed) {
-        const kind = error instanceof SmartThingsUnauthorizedError ? '인증 실패 / Authorization failed' : '상태 조회 실패 / Status read failed';
-        this.log.error(this.prefix(`${kind}: ${errorMessage(error)} — '응답 없음'으로 표시합니다. / Reporting 'No Response'.`));
-      } else {
-        this.log.debug(this.prefix(`상태 조회 실패 계속 / Status read still failing: ${errorMessage(error)}`));
-      }
-      this.failed = true;
+  /** StatusSink.onStatus: a full status snapshot from the status source. */
+  private handleStatus(status: VehicleStatus): void {
+    if (this.failed) {
+      this.log.info(this.prefix('SmartThings 연결이 복구됐습니다. / SmartThings connection restored.'));
     }
+    this.failed = false;
+    this.log.debug(this.prefix(`상태 갱신 / Status updated (lastUpdated ${status.lastUpdated?.toISOString() ?? '-'})`));
+    this.applyStatus(status);
+  }
+
+  /** StatusSink.onReadFailure: report 'No Response' until the next successful status. */
+  private handleReadFailure(error: unknown): void {
+    if (!this.failed) {
+      const kind = error instanceof SmartThingsUnauthorizedError ? '인증 실패 / Authorization failed' : '상태 조회 실패 / Status read failed';
+      this.log.error(this.prefix(`${kind}: ${errorMessage(error)} — '응답 없음'으로 표시합니다. / Reporting 'No Response'.`));
+    } else {
+      this.log.debug(this.prefix(`상태 조회 실패 계속 / Status read still failing: ${errorMessage(error)}`));
+    }
+    this.failed = true;
   }
 
   private applyStatus(status: VehicleStatus): void {
@@ -575,7 +577,7 @@ export class VehicleAccessory {
     const before = this.status?.lastUpdated?.getTime() ?? 0;
     await this.client.executeCommand(this.device.deviceId, VehicleCommands.refresh());
     this.log.info(this.prefix('새로고침 요청 접수 / Refresh accepted'));
-    this.poller.confirm(
+    this.source.confirm(
       () => (this.status?.lastUpdated?.getTime() ?? 0) > before,
       () => this.log.info(this.prefix('새로고침 후 새 데이터가 아직 없습니다. / No newer data after refresh yet.')),
     );
@@ -596,7 +598,7 @@ export class VehicleAccessory {
     this.client.executeCommand(this.device.deviceId, command)
       .then(() => {
         this.log.info(this.prefix(`명령 접수 / Command accepted: ${label}`));
-        this.poller.confirm(isDone, () => {
+        this.source.confirm(isDone, () => {
           this.log.warn(this.prefix(`명령이 제한 시간 안에 반영되지 않았습니다 / Command not reflected in time: ${label}`));
           revert();
         });
