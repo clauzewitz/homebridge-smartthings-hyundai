@@ -376,26 +376,37 @@ describe('commands', () => {
 
 describe('polling', () => {
   it('reads status at the configured interval and never sends commands on its own', async () => {
-    const { client, platform } = await launch(patConfig({ pollingInterval: 30 }));
+    const { client, platform } = await launch(patConfig({ pollingInterval: 90 }));
 
     expect(client.getStatus).toHaveBeenCalledTimes(1);
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(90_000);
     expect(client.getStatus).toHaveBeenCalledTimes(2);
-    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    await vi.advanceTimersByTimeAsync(9 * 90_000);
     platform.stop();
 
-    expect(client.getStatus).toHaveBeenCalledTimes(22);
+    expect(client.getStatus).toHaveBeenCalledTimes(11);
     expect(client.executeCommand).not.toHaveBeenCalled();
   });
 
-  it('stays within 10 status reads per 60 s even with back-to-back commands and 30 s polling', async () => {
+  it('raises an old 30 s polling interval to 60 s with a warning instead of failing', async () => {
+    const { client, log, platform } = await launch(patConfig({ pollingInterval: 30 }));
+
+    expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('Polling interval 30 s is below the minimum; using 60 s'));
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(client.getStatus).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(client.getStatus).toHaveBeenCalledTimes(2);
+    platform.stop();
+  });
+
+  it('stays within 10 status reads per 60 s even with back-to-back commands at the minimum polling interval', async () => {
     const client = mockClient();
     const reads: number[] = [];
     client.getStatus.mockImplementation(async () => {
       reads.push(Date.now());
       return EV_STATUS;
     });
-    const { accessory, platform } = await launch(patConfig({ pollingInterval: 30 }), client);
+    const { accessory, platform } = await launch(patConfig({ pollingInterval: 60 }), client);
     const target = service(accessory, S.LockMechanism, 'lock').getCharacteristic(C.LockTargetState);
 
     for (let i = 0; i < 12; i++) {

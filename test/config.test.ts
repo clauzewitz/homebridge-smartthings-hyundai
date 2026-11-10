@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { PlatformConfig } from 'homebridge';
 
 import { parseOptions, readPersonalAccessToken } from '../src/config.js';
@@ -24,7 +24,7 @@ describe('parseOptions', () => {
   it('clamps numeric options to their allowed ranges', () => {
     const options = parseOptions({ ...base, pollingInterval: 5, climateTemperature: 40, climateDuration: 0 });
 
-    expect(options.pollingIntervalSeconds).toBe(30);
+    expect(options.pollingIntervalSeconds).toBe(60);
     expect(options.climateTemperature).toBe(27);
     expect(options.climateDuration).toBe(1);
   });
@@ -61,5 +61,28 @@ describe('authorization options', () => {
     expect(readPersonalAccessToken({ ...base, personalAccessToken: '   ' })).toBeUndefined();
     expect(readPersonalAccessToken({ ...base, personalAccessToken: 42 })).toBeUndefined();
     expect(readPersonalAccessToken(base)).toBeUndefined();
+  });
+});
+
+describe('polling interval minimum', () => {
+  it('raises values below 60 s to 60 s and warns', () => {
+    const warn = vi.fn();
+    const options = parseOptions({ ...base, pollingInterval: 30 }, warn);
+
+    expect(options.pollingIntervalSeconds).toBe(60);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('using 60 s'));
+  });
+
+  it('does not warn for valid or missing values', () => {
+    const warn = vi.fn();
+    expect(parseOptions({ ...base, pollingInterval: 60 }, warn).pollingIntervalSeconds).toBe(60);
+    expect(parseOptions({ ...base, pollingInterval: 300 }, warn).pollingIntervalSeconds).toBe(300);
+    expect(parseOptions(base, warn).pollingIntervalSeconds).toBe(60);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('works without a warn callback', () => {
+    expect(parseOptions({ ...base, pollingInterval: 10 }).pollingIntervalSeconds).toBe(60);
   });
 });

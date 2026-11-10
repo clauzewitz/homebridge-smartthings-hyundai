@@ -40,7 +40,7 @@ export class SmartThingsHyundaiPlatform implements DynamicPlatformPlugin {
     public readonly api: API,
     private readonly dependencies: PlatformDependencies = {},
   ) {
-    this.options = parseOptions(config ?? {});
+    this.options = parseOptions(config ?? {}, (message) => this.log.warn(message));
 
     this.api.on('didFinishLaunching', () => {
       this.start().catch((error: unknown) => {

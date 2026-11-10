@@ -1,6 +1,6 @@
 import type { PlatformConfig } from 'homebridge';
 
-export const POLLING_INTERVAL_MIN_SECONDS = 30;
+export const POLLING_INTERVAL_MIN_SECONDS = 60;
 export const POLLING_INTERVAL_DEFAULT_SECONDS = 60;
 export const CLIMATE_TEMPERATURE_MIN = 17;
 export const CLIMATE_TEMPERATURE_MAX = 27;
@@ -38,7 +38,17 @@ function int(value: unknown, fallback: number, min: number, max: number): number
   return Math.min(max, Math.max(min, Math.round(value)));
 }
 
-export function parseOptions(config: PlatformConfig): PluginOptions {
+/**
+ * Parse plugin options. `warn` receives notices about values that were adjusted, e.g. a polling interval
+ * below the minimum from an older configuration (it is raised, never rejected).
+ */
+export function parseOptions(config: PlatformConfig, warn?: (message: string) => void): PluginOptions {
+  if (typeof config.pollingInterval === 'number' && config.pollingInterval < POLLING_INTERVAL_MIN_SECONDS) {
+    warn?.(
+      `상태 조회 주기 ${config.pollingInterval}초는 최소값보다 짧아 ${POLLING_INTERVAL_MIN_SECONDS}초로 올립니다. / ` +
+      `Polling interval ${config.pollingInterval} s is below the minimum; using ${POLLING_INTERVAL_MIN_SECONDS} s.`,
+    );
+  }
   return {
     authMethod: config.authMethod === 'pat' ? 'pat' : 'oauth',
     individualDoorWindowSensors: bool(config.individualDoorWindowSensors, false),

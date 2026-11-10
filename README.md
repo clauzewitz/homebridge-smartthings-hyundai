@@ -70,7 +70,7 @@ accessory 의 UUID 는 SmartThings 디바이스 ID 로 만들어집니다. 그�
 
 | 키 | 설명 | 기본값 |
 |---|---|---|
-| `pollingInterval` | 상태 조회 주기(초). 최소 30 | 60 |
+| `pollingInterval` | 상태 조회 주기(초). 최소 60. 더 짧게 적으면 60으로 올리고 로그에 알립니다 | 60 |
 | `allowUnlock` | 잠금 해제 허용. 끄면 잠금 해제 요청을 거부합니다 | `true` |
 | `allowClimate` | 원격 공조 허용. 끄면 공조 켜기 요청을 거부합니다 | `true` |
 | `climateAsSwitch` | 공조를 에어컨 대신 스위치로 등록 | `false` |
@@ -157,7 +157,7 @@ Accessory UUIDs are derived from the SmartThings device ID, so the room and name
 
 | Key | Description | Default |
 |---|---|---|
-| `pollingInterval` | Status polling interval in seconds (minimum 30) | 60 |
+| `pollingInterval` | Status polling interval in seconds (minimum 60). Shorter values are raised to 60 with a log notice | 60 |
 | `allowUnlock` | Allow unlock. When off, unlock requests are rejected | `true` |
 | `allowClimate` | Allow remote climate. When off, requests to turn on climate are rejected | `true` |
 | `climateAsSwitch` | Expose climate as a switch instead of an air conditioner | `false` |
