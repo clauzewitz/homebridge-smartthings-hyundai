@@ -30,7 +30,7 @@
             ]
           }
         ],
-        "description": "OAuth 가 기본이자 권장 방식입니다. / OAuth is the default and recommended method."
+        "description": "OAuth 가 기본이자 권장 방식이며 SmartThings 유료 API 플랜이 필요합니다. OAuth 는 아직 구현 중이라, 지금은 OAuth 를 선택하면 시작하지 않습니다. 그동안은 PAT 를 쓰세요. / OAuth is the default and recommended method and requires a paid SmartThings API plan. OAuth is still in progress, so the plugin does not start with OAuth selected yet; use a PAT in the meantime."
       },
       "personalAccessToken": {
         "title": "개인 액세스 토큰 (PAT) / Personal access token (PAT)",

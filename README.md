@@ -31,11 +31,12 @@
 - Homebridge 1.8 이상 또는 2.x
 - Node.js 22.12 이상, 24, 26
 - SmartThings 계정에 등록된 차량
-- SmartThings OAuth 앱(client id / secret) — 만드는 방법은 인증 기능 구현 후 안내합니다.
+- SmartThings OAuth 앱(client id / secret) — 플러그인 설정 화면에서 자동으로 만들 예정입니다(구현 중).
+- **SmartThings 유료 API 플랜(Developer Plan)** — SmartThings 는 2026-11-04 부터 OAuth 앱 생성·수정과 OAuth API 호출을 유료 플랜으로 바꿨고, 2026-12-15 이후에는 플랜이 없는 연동이 제한될 예정이라고 안내했습니다. 이 플러그인도 그 이후에는 플랜이 필요합니다. 가격·지원 국가·한도는 SmartThings Developer Center 에서 확인하세요.
 
 ### 인증 방식
 
-- **OAuth (기본, 권장)**: 토큰을 자동으로 갱신합니다. 현재 구현 중이며, OAuth 를 선택하면 아직 시작하지 않습니다.
+- **OAuth (기본, 권장)**: 토큰을 자동으로 갱신합니다. 유료 API 플랜이 필요합니다. 현재 구현 중이며, OAuth 를 선택하면 아직 시작하지 않습니다.
 - **개인 액세스 토큰 PAT (보조)**: 설정에서 인증 방식을 PAT 로 바꾸고 PAT 를 입력합니다.
   - 2024-12-30 이후 발급된 PAT 는 **24시간 후 만료**됩니다. 테스트용이거나 장기 PAT 를 가진 사용자용입니다.
   - PAT 는 자동 갱신할 수 없습니다. 만료되면 로그에 안내가 남고 차량이 홈 앱에서 '응답 없음'으로 표시됩니다. 새 PAT 를 입력하고 Homebridge 를 재시작하세요.
@@ -118,11 +119,12 @@ Commands (lock, climate, refresh, ping) are sent only when you operate the acces
 - Homebridge 1.8 or later, or 2.x
 - Node.js 22.12 or later, 24, or 26
 - A vehicle registered in your SmartThings account
-- A SmartThings OAuth app (client id / secret) — setup instructions will be added once authorization is implemented.
+- A SmartThings OAuth app (client id / secret) — the plugin settings screen will create it for you (in progress).
+- **A paid SmartThings API plan (Developer Plan)** — since 2026-11-04 SmartThings requires a paid plan to create or modify OAuth apps and to call the API with OAuth, and has announced that integrations without a plan will be limited after 2026-12-15. This plugin will need a plan from then on. Check pricing, supported countries and limits in the SmartThings Developer Center.
 
 ### Authorization
 
-- **OAuth (default, recommended)**: tokens are refreshed automatically. Work in progress; with OAuth selected the plugin does not start yet.
+- **OAuth (default, recommended)**: tokens are refreshed automatically. Requires a paid API plan. Work in progress; with OAuth selected the plugin does not start yet.
 - **Personal access token, PAT (supplementary)**: set the authorization method to PAT in the settings and enter your PAT.
   - PATs issued after 2024-12-30 **expire after 24 hours**. This mode is for testing or for users who have a long-lived PAT.
   - A PAT cannot be refreshed. When it expires, the log explains what happened and the vehicle shows as 'No Response' in the Home app. Enter a new PAT and restart Homebridge.
