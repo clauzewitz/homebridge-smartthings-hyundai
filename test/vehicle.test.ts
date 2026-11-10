@@ -3,10 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { SmartThingsApiError } from '../src/smartthings/errors.js';
 import {
   discoverVehicles,
+  isAnyPositionOpen,
+  isEngineOn,
+  isPositionOpen,
   isVehicleDevice,
   parseCommandResult,
   parseVehicleStatus,
   supportsAttribute,
+  toCelsius,
+  toKilometres,
   VehicleCommands,
 } from '../src/smartthings/vehicle.js';
 import { DEVICE_ITEMS, EV_STATUS, ICE_STATUS } from './fixtures/reference.js';
@@ -14,8 +19,8 @@ import { DEVICE_ITEMS, EV_STATUS, ICE_STATUS } from './fixtures/reference.js';
 describe('discoverVehicles', () => {
   it('returns only devices with a vehicle* capability, without manufacturer filtering', () => {
     expect(discoverVehicles(DEVICE_ITEMS)).toEqual([
-      { deviceId: 'vehicle-1', label: '쏘나타', manufacturer: 'Hyundai' },
-      { deviceId: 'vehicle-2', label: 'kia-ev6', manufacturer: undefined },
+      { deviceId: 'vehicle-1', label: '쏘나타', manufacturer: undefined, model: undefined },
+      { deviceId: 'vehicle-2', label: 'kia-ev6', manufacturer: undefined, model: undefined },
     ]);
   });
 
@@ -41,7 +46,6 @@ describe('parseVehicleStatus', () => {
       hvacSpeed: 3,
       defogState: 'off',
       cabinTemperature: 22,
-      cabinTemperatureUnit: 'C',
       lockState: 'locked',
       doors: { frontLeft: 'locked', frontRight: 'locked', rearLeft: 'locked', rearRight: 'locked' },
       windows: { frontLeft: 'closed', frontRight: 'closed', rearLeft: 'closed', rearRight: 'closed' },
@@ -144,5 +148,92 @@ describe('parseCommandResult', () => {
     [null],
   ])('throws when not accepted: %j', (payload) => {
     expect(() => parseCommandResult(payload)).toThrow(SmartThingsApiError);
+  });
+});
+
+describe('unit conversion', () => {
+  it('converts distances to km', () => {
+    expect(toKilometres(100, 'km')).toBe(100);
+    expect(toKilometres(100, undefined)).toBe(100);
+    expect(toKilometres(100, 'mi')).toBe(160.9);
+    expect(toKilometres(12_500, 'm')).toBe(12.5);
+    expect(toKilometres(100, 'furlong')).toBeUndefined();
+    expect(toKilometres(undefined, 'km')).toBeUndefined();
+  });
+
+  it('converts temperatures to °C', () => {
+    expect(toCelsius(22, 'C')).toBe(22);
+    expect(toCelsius(22, undefined)).toBe(22);
+    expect(toCelsius(71.6, 'F')).toBe(22);
+    expect(toCelsius(22, 'K')).toBeUndefined();
+  });
+
+  it('applies the reported units while parsing', () => {
+    const status = parseVehicleStatus({
+      components: {
+        main: {
+          vehicleRange: { estimatedRemainingRange: { value: 100, unit: 'mi' } },
+          vehicleOdometer: { odometerReading: { value: 5000, unit: 'm' } },
+          vehicleHvac: {
+            temperature: { value: 75.2, unit: 'F' },
+            temperatureRange: { value: { minimum: 62.6, maximum: 80.6, step: 1 }, unit: 'F' },
+          },
+        },
+      },
+    });
+
+    expect(status.rangeKm).toBe(160.9);
+    expect(status.odometerKm).toBe(5);
+    expect(status.cabinTemperature).toBe(24);
+    expect(status.temperatureRange).toEqual({ minimum: 17, maximum: 27, step: 1 });
+  });
+});
+
+describe('lastUpdated', () => {
+  it('uses the latest timestamp of reported vehicle* attributes only', () => {
+    const status = parseVehicleStatus({
+      components: {
+        main: {
+          vehicleRange: { estimatedRemainingRange: { value: 1, timestamp: '2026-11-10T01:00:00.000Z' } },
+          vehicleBattery: {
+            batteryLevel: { value: 50, timestamp: '2026-11-10T02:00:00.000Z' },
+            chargingState: { value: null, timestamp: '2026-11-10T05:00:00.000Z' },
+          },
+          healthCheck: { 'DeviceWatch-DeviceStatus': { value: 'online', timestamp: '2026-11-10T09:00:00.000Z' } },
+        },
+      },
+    });
+
+    expect(status.lastUpdated?.toISOString()).toBe('2026-11-10T02:00:00.000Z');
+  });
+
+  it('is undefined without timestamps', () => {
+    expect(parseVehicleStatus(ICE_STATUS).lastUpdated).toBeUndefined();
+  });
+});
+
+describe('state helpers', () => {
+  it.each([
+    ['starting', true],
+    ['running', true],
+    ['off', false],
+    ['unknown', false],
+  ])('isEngineOn(%s) is %s', (engineState, expected) => {
+    const status = parseVehicleStatus({ components: { main: { vehicleEngine: { engineState: { value: engineState } } } } });
+
+    expect(isEngineOn(status)).toBe(expected);
+  });
+
+  it('maps door positions: open is open, closed and locked are closed', () => {
+    expect(isPositionOpen('open')).toBe(true);
+    expect(isPositionOpen('closed')).toBe(false);
+    expect(isPositionOpen('locked')).toBe(false);
+    expect(isPositionOpen(undefined)).toBeUndefined();
+  });
+
+  it('combines positions into one open/closed state', () => {
+    expect(isAnyPositionOpen({ frontLeft: 'locked', rearRight: 'open' })).toBe(true);
+    expect(isAnyPositionOpen({ frontLeft: 'locked', frontRight: 'closed' })).toBe(false);
+    expect(isAnyPositionOpen({})).toBeUndefined();
   });
 });

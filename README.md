@@ -17,9 +17,9 @@
 | 잠금 / 잠금 해제 | 잠금장치 |
 | 원격 공조(시동 포함) | 에어컨 (옵션: 스위치) |
 | 전기차 배터리 잔량·충전 상태 | 배터리 |
-| 도어·창문 상태 | 접촉 센서 |
+| 도어·창문 상태 | 접촉 센서 (기본: 도어 1개·창문 1개로 묶음, 옵션으로 개별 표시) |
 | 차량 경고(타이어, 오일 등) | 접촉 센서 |
-| 시동 상태 | 읽기 전용 센서 |
+| 시동 상태 | 읽기 전용 센서 (차량이 시동 상태를 보고할 때만. 전기차는 보통 보고하지 않음) |
 | 상태 새로고침, 연결 확인 | 스위치(자동으로 꺼짐) |
 
 시동 단독 제어와 충전 시작·중지는 제공하지 않습니다.
@@ -30,6 +30,14 @@
 - Node.js 22.12 이상, 24, 26
 - SmartThings 계정에 등록된 차량
 - SmartThings OAuth 앱(client id / secret) — 만드는 방법은 인증 기능 구현 후 안내합니다.
+
+### 인증 방식
+
+- **OAuth (기본, 권장)**: 토큰을 자동으로 갱신합니다. 현재 구현 중입니다.
+- **개인 액세스 토큰 PAT (보조)**: 설정에서 인증 방식을 PAT 로 바꾸고 PAT 를 입력합니다.
+  - 2024-12-30 이후 발급된 PAT 는 **24시간 후 만료**됩니다. 테스트용이거나 장기 PAT 를 가진 사용자용입니다.
+  - PAT 는 자동 갱신할 수 없습니다. 만료되면 로그에 안내가 남고 차량이 홈 앱에서 '응답 없음'으로 표시됩니다. 새 PAT 를 입력하고 Homebridge 를 재시작하세요.
+  - 필요한 권한: Devices 의 list, see, control.
 
 ### 설치
 
@@ -68,6 +76,9 @@ accessory 의 UUID 는 SmartThings 디바이스 ID 로 만들어집니다. 그�
 | `climateDuration` | 공조 작동 시간(분, 1–30) | 10 |
 | `climateDefog` | 앞유리 김서림 제거 | `false` |
 | `exposeRangeAsLightSensor` | 주행 가능 거리를 조도 센서(lux = km)로 표시 | `false` |
+| `individualDoorWindowSensors` | 도어 4개·창문 4개를 각각 센서로 표시 | `false` |
+| `authMethod` | 인증 방식: `oauth` 또는 `pat` | `oauth` |
+| `personalAccessToken` | PAT (인증 방식이 `pat` 일 때만) | — |
 
 ### 안전 안내
 
@@ -91,9 +102,9 @@ A Homebridge plugin that lets you monitor and control **Hyundai, Genesis and Kia
 | Lock / unlock | Lock |
 | Remote climate (includes remote start) | Air conditioner (option: switch) |
 | EV battery level and charging state | Battery |
-| Door and window state | Contact sensor |
+| Door and window state | Contact sensor (default: one combined door sensor and one combined window sensor; per-position sensors optional) |
 | Vehicle warnings (tires, oil, etc.) | Contact sensor |
-| Engine state | Read-only sensor |
+| Engine state | Read-only sensor (only when the vehicle reports engine state; EVs usually do not) |
 | Refresh status, check connection | Switch (turns itself off) |
 
 Standalone engine start/stop and charging start/stop are not provided.
@@ -104,6 +115,14 @@ Standalone engine start/stop and charging start/stop are not provided.
 - Node.js 22.12 or later, 24, or 26
 - A vehicle registered in your SmartThings account
 - A SmartThings OAuth app (client id / secret) — setup instructions will be added once authorization is implemented.
+
+### Authorization
+
+- **OAuth (default, recommended)**: tokens are refreshed automatically. Work in progress.
+- **Personal access token, PAT (supplementary)**: set the authorization method to PAT in the settings and enter your PAT.
+  - PATs issued after 2024-12-30 **expire after 24 hours**. This mode is for testing or for users who have a long-lived PAT.
+  - A PAT cannot be refreshed. When it expires, the log explains what happened and the vehicle shows as 'No Response' in the Home app. Enter a new PAT and restart Homebridge.
+  - Required scopes: Devices list, see and control.
 
 ### Installation
 
@@ -142,6 +161,9 @@ Accessory UUIDs are derived from the SmartThings device ID, so the room and name
 | `climateDuration` | Climate duration (minutes, 1–30) | 10 |
 | `climateDefog` | Windshield defog | `false` |
 | `exposeRangeAsLightSensor` | Show driving range as a light sensor (lux = km) | `false` |
+| `individualDoorWindowSensors` | One sensor per door and per window | `false` |
+| `authMethod` | Authorization method: `oauth` or `pat` | `oauth` |
+| `personalAccessToken` | PAT (only when the method is `pat`) | — |
 
 ### Safety
 

@@ -12,6 +12,34 @@
         "type": "string",
         "default": "SmartThings Hyundai"
       },
+      "authMethod": {
+        "title": "인증 방식 / Authorization method",
+        "type": "string",
+        "default": "oauth",
+        "oneOf": [
+          {
+            "title": "OAuth (권장 / recommended)",
+            "enum": [
+              "oauth"
+            ]
+          },
+          {
+            "title": "개인 액세스 토큰 PAT (보조 / supplementary)",
+            "enum": [
+              "pat"
+            ]
+          }
+        ],
+        "description": "OAuth 가 기본이자 권장 방식입니다. / OAuth is the default and recommended method."
+      },
+      "personalAccessToken": {
+        "title": "개인 액세스 토큰 (PAT) / Personal access token (PAT)",
+        "type": "string",
+        "condition": {
+          "functionBody": "return model.authMethod === 'pat';"
+        },
+        "description": "2024-12-30 이후 발급된 PAT 는 24시간 후 만료됩니다. 테스트용이거나 장기 PAT 를 가진 사용자용입니다. 만료되면 차량이 '응답 없음'으로 표시되며, 새 PAT 를 입력해야 합니다. / PATs issued after 2024-12-30 expire after 24 hours. This mode is for testing or for users who have a long-lived PAT. When the PAT expires the vehicle shows as 'No Response' until a new PAT is entered."
+      },
       "pollingInterval": {
         "title": "상태 조회 주기(초) / Polling interval (seconds)",
         "type": "integer",
@@ -62,6 +90,12 @@
         "type": "boolean",
         "default": false,
         "description": "HomeKit 에 거리 타입이 없어 lux 값으로 km 를 표시하는 편법입니다. / HomeKit has no distance type; this shows km as a lux value."
+      },
+      "individualDoorWindowSensors": {
+        "title": "도어·창문 센서를 개별로 표시 / Separate door and window sensors",
+        "type": "boolean",
+        "default": false,
+        "description": "끄면 도어 묶음 센서 1개와 창문 묶음 센서 1개만 만듭니다. 켜면 도어 4개, 창문 4개를 각각 만듭니다. / When off, one combined door sensor and one combined window sensor are created. When on, one sensor per door and per window."
       }
     }
   }

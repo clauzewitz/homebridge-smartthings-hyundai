@@ -11,7 +11,7 @@ import {
 
 export const SMARTTHINGS_API_BASE_URL = 'https://api.smartthings.com/v1';
 
-/** Supplies access tokens. */
+/** Supplies access tokens. Implemented by the personal access token provider. */
 export interface TokenProvider {
   getAccessToken(): Promise<string>;
   /** Called once after an HTTP 401; the next `getAccessToken()` must return the new token. */
@@ -49,7 +49,7 @@ const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(r
  * Minimal SmartThings REST client for vehicle devices.
  *
  * - 401: calls `tokens.refreshAccessToken()` and retries once.
- * - 429: waits `X-RateLimit-Reset` seconds (or exponential backoff) and retries, bounded.
+ * - 429: waits `X-RateLimit-Reset` milliseconds (or exponential backoff) and retries, bounded.
  */
 export class SmartThingsClient {
   private readonly tokens: TokenProvider;
@@ -185,13 +185,14 @@ export class SmartThingsClient {
   }
 
   /**
-   * `X-RateLimit-Reset` is documented as seconds until the window resets (unit unverified).
+   * `X-RateLimit-Reset` is the time until the current ~60 s window resets, in milliseconds
+   * (measured on a real vehicle on 2026-11-10: the value dropped by ~5000 per 5 s and wrapped near 60000).
    * Falls back to exponential backoff. Always capped by `maxRateLimitWaitMs`.
    */
   private rateLimitWaitMs(headers: Headers, attempt: number): number {
     const reset = Number(headers.get('x-ratelimit-reset'));
     const waitMs = headers.get('x-ratelimit-reset') !== null && Number.isFinite(reset) && reset >= 0
-      ? Math.ceil(reset * 1000)
+      ? Math.ceil(reset)
       : this.backoffBaseMs * 2 ** attempt;
     return Math.min(waitMs, this.maxRateLimitWaitMs);
   }

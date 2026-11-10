@@ -1,0 +1,103 @@
+{
+  "deviceId": "ev-device-id",
+  "name": "EV Vehicle Device",
+  "label": "EV Vehicle",
+  "manufacturerName": "stormvirtual23457",
+  "presentationId": "presentation-id",
+  "deviceManufacturerCode": "Genesis",
+  "locationId": "location-id",
+  "ownerId": "owner-id",
+  "roomId": "room-id",
+  "productId": "00000000-0000-4000-8000-000000000001",
+  "brandId": "00000000-0000-4000-8000-000000000002",
+  "components": [
+    {
+      "id": "main",
+      "label": "main",
+      "capabilities": [
+        {
+          "id": "healthCheck",
+          "version": 1
+        },
+        {
+          "id": "refresh",
+          "version": 1
+        },
+        {
+          "id": "vehicleRange",
+          "version": 1
+        },
+        {
+          "id": "vehicleOdometer",
+          "version": 1
+        },
+        {
+          "id": "vehicleEngine",
+          "version": 1
+        },
+        {
+          "id": "vehicleHvac",
+          "version": 1
+        },
+        {
+          "id": "vehicleHvacRemoteSwitch",
+          "version": 1
+        },
+        {
+          "id": "vehicleBattery",
+          "version": 1
+        },
+        {
+          "id": "vehicleDoorState",
+          "version": 1
+        },
+        {
+          "id": "vehicleWindowState",
+          "version": 1
+        },
+        {
+          "id": "vehicleWarning",
+          "version": 1
+        },
+        {
+          "id": "vehicleInformation",
+          "version": 1
+        },
+        {
+          "id": "custom.disabledCapabilities",
+          "version": 1
+        },
+        {
+          "id": "custom.userNotification",
+          "version": 1
+        },
+        {
+          "id": "find.findNode",
+          "version": 1
+        }
+      ],
+      "categories": [
+        {
+          "name": "Car",
+          "categoryType": "manufacturer"
+        }
+      ],
+      "optional": false
+    }
+  ],
+  "createTime": "2026-11-10T00:00:00.000Z",
+  "childDevices": [],
+  "profile": {
+    "id": "profile-id"
+  },
+  "viper": {
+    "manufacturerName": "Genesis",
+    "modelName": "XX0XX",
+    "endpointAppId": "endpoint-app-id"
+  },
+  "type": "VIPER",
+  "restrictionTier": 0,
+  "allowed": [],
+  "executionContext": "CLOUD",
+  "relationships": []
+}

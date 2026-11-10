@@ -9,8 +9,14 @@ export const CLIMATE_DURATION_MIN = 1;
 export const CLIMATE_DURATION_MAX = 30;
 export const CLIMATE_DURATION_DEFAULT = 10;
 
+export type AuthMethod = 'oauth' | 'pat';
+
 /** Plugin options after defaults and range limits are applied. */
 export interface PluginOptions {
+  /** `oauth` (default, recommended) or `pat` (supplementary; PATs issued after 2024-12-30 expire after 24 h). */
+  authMethod: AuthMethod;
+  /** Create one sensor per door/window instead of one combined door sensor and one combined window sensor. */
+  individualDoorWindowSensors: boolean;
   pollingIntervalSeconds: number;
   allowUnlock: boolean;
   allowClimate: boolean;
@@ -34,6 +40,8 @@ function int(value: unknown, fallback: number, min: number, max: number): number
 
 export function parseOptions(config: PlatformConfig): PluginOptions {
   return {
+    authMethod: config.authMethod === 'pat' ? 'pat' : 'oauth',
+    individualDoorWindowSensors: bool(config.individualDoorWindowSensors, false),
     pollingIntervalSeconds: int(
       config.pollingInterval,
       POLLING_INTERVAL_DEFAULT_SECONDS,
@@ -48,4 +56,13 @@ export function parseOptions(config: PlatformConfig): PluginOptions {
     climateDefog: bool(config.climateDefog, false),
     exposeRangeAsLightSensor: bool(config.exposeRangeAsLightSensor, false),
   };
+}
+
+/**
+ * The PAT is kept out of PluginOptions so that options can be logged safely.
+ * Returns `undefined` when the field is missing or blank.
+ */
+export function readPersonalAccessToken(config: PlatformConfig): string | undefined {
+  const token = typeof config.personalAccessToken === 'string' ? config.personalAccessToken.trim() : '';
+  return token === '' ? undefined : token;
 }

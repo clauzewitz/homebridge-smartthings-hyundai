@@ -34,7 +34,10 @@ function num(value: unknown): number | undefined {
 export interface VehicleDevice {
   deviceId: string;
   label: string;
+  /** From `deviceManufacturerCode` or `viper.manufacturerName` (e.g. `Genesis`). `manufacturerName` holds an internal id, so it is not used. */
   manufacturer?: string;
+  /** From `viper.modelName` (e.g. `XX0XX`). */
+  model?: string;
 }
 
 function capabilityId(capability: unknown): string | undefined {
@@ -64,19 +67,70 @@ export function discoverVehicles(items: readonly unknown[]): VehicleDevice[] {
     if (!deviceId) {
       continue;
     }
+    const viper = isObject(device.viper) ? device.viper : {};
     vehicles.push({
       deviceId,
       label: str(device.label) || str(device.name) || deviceId,
-      manufacturer: str(device.manufacturerName),
+      manufacturer: str(device.deviceManufacturerCode) || str(viper.manufacturerName),
+      model: str(viper.modelName),
     });
   }
   return vehicles;
 }
 
 // ---------------------------------------------------------------------------
+// Units
+// ---------------------------------------------------------------------------
+
+const KM_PER_MILE = 1.609344;
+
+function round(value: number, digits: number): number {
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
+}
+
+/**
+ * Convert a distance to km. Units defined by vehicleRange/vehicleOdometer are `mi`, `km`, `m` (metres).
+ * A missing unit is treated as km; an unknown unit yields `undefined` rather than a wrong number.
+ */
+export function toKilometres(value: number | undefined, unit: string | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  switch (unit) {
+  case undefined:
+  case 'km':
+    return value;
+  case 'mi':
+    return round(value * KM_PER_MILE, 1);
+  case 'm':
+    return round(value / 1000, 1);
+  default:
+    return undefined;
+  }
+}
+
+/** Convert a temperature to °C. Units defined by vehicleHvac are `F` and `C`; a missing unit is treated as °C. */
+export function toCelsius(value: number | undefined, unit: string | undefined): number | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  switch (unit) {
+  case undefined:
+  case 'C':
+    return value;
+  case 'F':
+    return round((value - 32) * 5 / 9, 1);
+  default:
+    return undefined;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Status
 // ---------------------------------------------------------------------------
 
+/** Per-door values are `open`, `closed` or `locked` (closed and locked); windows are `open` or `closed`. */
 export interface FourPositions {
   frontLeft?: string;
   frontRight?: string;
@@ -84,17 +138,27 @@ export interface FourPositions {
   rearRight?: string;
 }
 
+export interface NumericRange {
+  minimum?: number;
+  maximum?: number;
+  step?: number;
+}
+
 export interface VehicleStatus {
   rangeKm?: number;
   odometerKm?: number;
+  /** `starting`, `running`, `unknown`, `off`; `undefined` when not reported (e.g. EVs). See {@link isEngineOn}. */
   engineState?: string;
   hvacState?: string;
   hvacSpeed?: number;
+  hvacSpeedRange?: NumericRange;
   defogState?: string;
+  /** Cabin temperature in °C. */
   cabinTemperature?: number;
-  cabinTemperatureUnit?: string;
+  /** Settable climate temperature range in °C (test EV: 17–27). */
+  temperatureRange?: NumericRange;
+  /** `locked`, `unlocked`, `unknown` */
   lockState?: string;
-  /** Meaning of the per-door values (open state vs. lock state) is unverified. */
   doors: FourPositions;
   windows: FourPositions;
   warnings: {
@@ -112,17 +176,49 @@ export interface VehicleStatus {
   };
   battery: {
     level?: number;
+    /** `charging`, `stopped` */
     chargingState?: string;
+    /** `connected`, `disconnected` */
     chargingPlug?: string;
     chargingDetail?: string;
+    chargingRemainMinutes?: number;
   };
   health?: string;
-  /** Every `capability.attribute` key reported in the main component, used to decide which services to expose. */
+  /**
+   * Latest attribute timestamp among `vehicle*` capabilities: when the vehicle data was last updated in SmartThings.
+   * Informational only — the cloud keeps the last reported value, so an old timestamp does not mean the device is unreachable.
+   */
+  lastUpdated?: Date;
+  /** `capability.attribute` keys whose value is not null. Attributes reported as null are treated as unsupported. */
   attributes: ReadonlySet<string>;
 }
 
 export function supportsAttribute(status: VehicleStatus, capability: string, attribute: string): boolean {
   return status.attributes.has(`${capability}.${attribute}`);
+}
+
+const ENGINE_ON_STATES: ReadonlySet<string> = new Set(['starting', 'running']);
+
+/** `true` for `starting`/`running`, `false` for other reported values, `undefined` when the vehicle does not report it. */
+export function isEngineOn(status: VehicleStatus): boolean | undefined {
+  return status.engineState === undefined ? undefined : ENGINE_ON_STATES.has(status.engineState);
+}
+
+/** `open` → true, `closed`/`locked` → false, anything else → undefined. */
+export function isPositionOpen(value: string | undefined): boolean | undefined {
+  if (value === 'open') {
+    return true;
+  }
+  return value === 'closed' || value === 'locked' ? false : undefined;
+}
+
+/** Combined state for one door or window sensor: open if any position is open, closed if all reported are closed. */
+export function isAnyPositionOpen(positions: FourPositions): boolean | undefined {
+  const states = Object.values(positions).map(isPositionOpen).filter((state): state is boolean => state !== undefined);
+  if (states.length === 0) {
+    return undefined;
+  }
+  return states.includes(true);
 }
 
 function mainComponent(payload: unknown): JsonObject {
@@ -144,7 +240,11 @@ function aggregateWarning(values: readonly (string | undefined)[]): string | und
   return reported.every((value) => value === 'normal') ? 'normal' : undefined;
 }
 
-/** Map `GET /devices/{id}/status` JSON into a stable structure. Missing capabilities yield `undefined` fields. */
+function isReported(attributeStatus: unknown): attributeStatus is JsonObject {
+  return isObject(attributeStatus) && attributeStatus.value !== null && attributeStatus.value !== undefined;
+}
+
+/** Map `GET /devices/{id}/status` JSON into a stable structure. Missing or null attributes yield `undefined` fields. */
 export function parseVehicleStatus(payload: unknown): VehicleStatus {
   const main = mainComponent(payload);
 
@@ -154,16 +254,33 @@ export function parseVehicleStatus(payload: unknown): VehicleStatus {
       return undefined;
     }
     const attributeStatus = capabilityStatus[name];
-    return isObject(attributeStatus) ? attributeStatus : undefined;
+    return isReported(attributeStatus) ? attributeStatus : undefined;
   };
   const text = (capability: string, name: string) => str(attribute(capability, name)?.value);
   const number = (capability: string, name: string) => num(attribute(capability, name)?.value);
+  const unit = (capability: string, name: string) => str(attribute(capability, name)?.unit);
+  const range = (capability: string, name: string, convert: (value: number | undefined) => number | undefined = (value) => value) => {
+    const value = attribute(capability, name)?.value;
+    if (!isObject(value)) {
+      return undefined;
+    }
+    return { minimum: convert(num(value.minimum)), maximum: convert(num(value.maximum)), step: num(value.step) };
+  };
 
   const attributes = new Set<string>();
+  let lastUpdatedMs: number | undefined;
   for (const [capability, capabilityStatus] of Object.entries(main)) {
-    if (isObject(capabilityStatus)) {
-      for (const name of Object.keys(capabilityStatus)) {
-        attributes.add(`${capability}.${name}`);
+    if (!isObject(capabilityStatus)) {
+      continue;
+    }
+    for (const [name, attributeStatus] of Object.entries(capabilityStatus)) {
+      if (!isReported(attributeStatus)) {
+        continue;
+      }
+      attributes.add(`${capability}.${name}`);
+      const timestamp = capability.startsWith('vehicle') ? Date.parse(str(attributeStatus.timestamp) ?? '') : NaN;
+      if (Number.isFinite(timestamp) && (lastUpdatedMs === undefined || timestamp > lastUpdatedMs)) {
+        lastUpdatedMs = timestamp;
       }
     }
   }
@@ -176,14 +293,15 @@ export function parseVehicleStatus(payload: unknown): VehicleStatus {
   };
 
   return {
-    rangeKm: number('vehicleRange', 'estimatedRemainingRange'),
-    odometerKm: number('vehicleOdometer', 'odometerReading'),
+    rangeKm: toKilometres(number('vehicleRange', 'estimatedRemainingRange'), unit('vehicleRange', 'estimatedRemainingRange')),
+    odometerKm: toKilometres(number('vehicleOdometer', 'odometerReading'), unit('vehicleOdometer', 'odometerReading')),
     engineState: text('vehicleEngine', 'engineState'),
     hvacState: text('vehicleHvac', 'hvacState'),
     hvacSpeed: number('vehicleHvac', 'hvacSpeed'),
+    hvacSpeedRange: range('vehicleHvac', 'hvacSpeedRange'),
     defogState: text('vehicleHvac', 'defogState'),
-    cabinTemperature: number('vehicleHvac', 'temperature'),
-    cabinTemperatureUnit: str(attribute('vehicleHvac', 'temperature')?.unit),
+    cabinTemperature: toCelsius(number('vehicleHvac', 'temperature'), unit('vehicleHvac', 'temperature')),
+    temperatureRange: range('vehicleHvac', 'temperatureRange', (value) => toCelsius(value, unit('vehicleHvac', 'temperatureRange'))),
     lockState: text('vehicleDoorState', 'lockState'),
     doors: {
       frontLeft: text('vehicleDoorState', 'frontLeftDoor'),
@@ -214,8 +332,10 @@ export function parseVehicleStatus(payload: unknown): VehicleStatus {
       chargingState: text('vehicleBattery', 'chargingState'),
       chargingPlug: text('vehicleBattery', 'chargingPlug'),
       chargingDetail: text('vehicleBattery', 'chargingDetail'),
+      chargingRemainMinutes: number('vehicleBattery', 'chargingRemainTime'),
     },
     health: text('healthCheck', 'DeviceWatch-DeviceStatus'),
+    lastUpdated: lastUpdatedMs === undefined ? undefined : new Date(lastUpdatedMs),
     attributes,
   };
 }

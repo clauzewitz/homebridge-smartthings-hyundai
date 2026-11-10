@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { PlatformConfig } from 'homebridge';
 
-import { parseOptions } from '../src/config.js';
+import { parseOptions, readPersonalAccessToken } from '../src/config.js';
 
 const base: PlatformConfig = { platform: 'SmartThingsHyundai' };
 
 describe('parseOptions', () => {
   it('applies defaults when options are missing', () => {
     expect(parseOptions(base)).toEqual({
+      authMethod: 'oauth',
+      individualDoorWindowSensors: false,
       pollingIntervalSeconds: 60,
       allowUnlock: true,
       allowClimate: true,
@@ -39,5 +41,25 @@ describe('parseOptions', () => {
 
     expect(options.pollingIntervalSeconds).toBe(60);
     expect(options.allowUnlock).toBe(true);
+  });
+});
+
+describe('authorization options', () => {
+  it('selects PAT only when explicitly configured', () => {
+    expect(parseOptions({ ...base, authMethod: 'pat' }).authMethod).toBe('pat');
+    expect(parseOptions({ ...base, authMethod: 'something' }).authMethod).toBe('oauth');
+  });
+
+  it('keeps the PAT out of the parsed options', () => {
+    const options = parseOptions({ ...base, authMethod: 'pat', personalAccessToken: 'secret-value' });
+
+    expect(JSON.stringify(options)).not.toContain('secret-value');
+  });
+
+  it('reads a trimmed PAT and treats blanks as missing', () => {
+    expect(readPersonalAccessToken({ ...base, personalAccessToken: '  abc  ' })).toBe('abc');
+    expect(readPersonalAccessToken({ ...base, personalAccessToken: '   ' })).toBeUndefined();
+    expect(readPersonalAccessToken({ ...base, personalAccessToken: 42 })).toBeUndefined();
+    expect(readPersonalAccessToken(base)).toBeUndefined();
   });
 });

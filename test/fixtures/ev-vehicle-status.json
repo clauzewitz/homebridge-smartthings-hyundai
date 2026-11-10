@@ -1,0 +1,267 @@
+{
+  "components": {
+    "main": {
+      "find.findNode": {
+        "state": {
+          "value": null
+        },
+        "support": {
+          "value": false,
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        }
+      },
+      "vehicleEngine": {
+        "engineState": {
+          "value": null
+        }
+      },
+      "vehicleInformation": {
+        "vehicleColor": {
+          "value": null
+        },
+        "vehicleYear": {
+          "value": null
+        },
+        "vehicleImage": {
+          "value": null
+        },
+        "vehicleTrim": {
+          "value": null
+        },
+        "vehiclePlate": {
+          "value": null
+        },
+        "vehicleModel": {
+          "value": null
+        },
+        "vehicleId": {
+          "value": null
+        },
+        "vehicleMake": {
+          "value": null
+        }
+      },
+      "custom.userNotification": {
+        "message": {
+          "value": {
+            "type": 1,
+            "code": "MO_HCAR_V0011"
+          },
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        }
+      },
+      "refresh": {},
+      "vehicleHvac": {
+        "temperatureRange": {
+          "value": {
+            "minimum": 17,
+            "maximum": 27
+          },
+          "unit": "C",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "defogState": {
+          "value": "off",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "hvacSpeedRange": {
+          "value": {
+            "minimum": 0,
+            "maximum": 8
+          },
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "temperature": {
+          "value": 24,
+          "unit": "C",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "hvacState": {
+          "value": "off",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "hvacSpeed": {
+          "value": 0,
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        }
+      },
+      "vehicleWarning": {
+        "fuel": {
+          "value": "normal",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "tirePressureFrontLeft": {
+          "value": "normal",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "electricVehicleBattery": {
+          "value": "normal",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "supportedAttributes": {
+          "value": [
+            "tirePressureFrontLeft",
+            "tirePressureFrontRight",
+            "tirePressureRearLeft",
+            "tirePressureRearRight",
+            "auxiliaryBattery",
+            "washerFluid",
+            "brakeFluid",
+            "lampWire",
+            "electricVehicleBattery"
+          ],
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "lampWire": {
+          "value": "normal",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "auxiliaryBattery": {
+          "value": "normal",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "brakeFluid": {
+          "value": "normal",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "tirePressureFrontRight": {
+          "value": "normal",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "washerFluid": {
+          "value": "normal",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "smartKeyBattery": {
+          "value": "normal",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "engineOil": {
+          "value": "normal",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "tirePressureRearLeft": {
+          "value": "normal",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "tirePressureRearRight": {
+          "value": "normal",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        }
+      },
+      "vehicleHvacRemoteSwitch": {},
+      "vehicleWindowState": {
+        "frontRightWindow": {
+          "value": "closed",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "rearRightWindow": {
+          "value": "closed",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "supportedAttributes": {
+          "value": null
+        },
+        "frontLeftWindow": {
+          "value": "closed",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "rearLeftWindow": {
+          "value": "closed",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        }
+      },
+      "vehicleRange": {
+        "estimatedRemainingRange": {
+          "value": 300,
+          "unit": "km",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        }
+      },
+      "vehicleOdometer": {
+        "odometerReading": {
+          "value": 20000,
+          "unit": "km",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        }
+      },
+      "healthCheck": {
+        "checkInterval": {
+          "value": 60,
+          "unit": "s",
+          "data": {
+            "deviceScheme": "UNTRACKED",
+            "protocol": "cloud"
+          },
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "healthStatus": {
+          "value": null
+        },
+        "DeviceWatch-Enroll": {
+          "value": null
+        },
+        "DeviceWatch-DeviceStatus": {
+          "value": "online",
+          "data": {},
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        }
+      },
+      "vehicleDoorState": {
+        "frontLeftDoor": {
+          "value": "closed",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "rearRightDoor": {
+          "value": "closed",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "rearLeftDoor": {
+          "value": "closed",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "supportedAttributes": {
+          "value": null
+        },
+        "lockState": {
+          "value": "locked",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "frontRightDoor": {
+          "value": "closed",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        }
+      },
+      "custom.disabledCapabilities": {
+        "disabledCapabilities": {
+          "value": [],
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        }
+      },
+      "vehicleBattery": {
+        "chargingRemainTime": {
+          "value": 0,
+          "unit": "mins",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "chargingDetail": {
+          "value": "noCharging",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "chargingPlug": {
+          "value": "disconnected",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "batteryLevel": {
+          "value": 50,
+          "unit": "%",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        },
+        "chargingState": {
+          "value": "stopped",
+          "timestamp": "2026-11-10T00:00:00.000Z"
+        }
+      }
+    }
+  }
+}

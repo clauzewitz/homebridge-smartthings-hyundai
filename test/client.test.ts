@@ -148,9 +148,9 @@ describe('SmartThingsClient 401 handling', () => {
 });
 
 describe('SmartThingsClient 429 handling', () => {
-  it('waits X-RateLimit-Reset seconds and retries', async () => {
+  it('waits X-RateLimit-Reset milliseconds and retries', async () => {
     const { client, sleep } = setup([
-      new Response('', { status: 429, headers: { 'X-RateLimit-Reset': '7' } }),
+      new Response('', { status: 429, headers: { 'X-RateLimit-Reset': '7000' } }),
       json(200, EV_STATUS),
     ]);
 
@@ -174,7 +174,7 @@ describe('SmartThingsClient 429 handling', () => {
 
   it('caps a single wait', async () => {
     const { client, sleep } = setup([
-      new Response('', { status: 429, headers: { 'X-RateLimit-Reset': '3600' } }),
+      new Response('', { status: 429, headers: { 'X-RateLimit-Reset': '3600000' } }),
       json(200, {}),
     ]);
 
