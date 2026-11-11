@@ -429,3 +429,77 @@ describe('polling', () => {
     expect(client.getStatus).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('service name language', () => {
+  const names = (accessory: FakePlatformAccessory | undefined) => Object.fromEntries((accessory?.services ?? [])
+    .filter((item) => item.subtype)
+    .map((item) => [item.subtype, [item.getCharacteristic(C.Name).value, item.getCharacteristic(C.ConfiguredName).value]]));
+
+  it('uses Korean names by default (Name and ConfiguredName)', async () => {
+    const { accessory, platform } = await launch();
+    platform.stop();
+
+    expect(names(accessory)).toEqual({
+      lock: ['잠금', '잠금'],
+      climate: ['공조', '공조'],
+      battery: ['배터리', '배터리'],
+      doors: ['도어', '도어'],
+      windows: ['창문', '창문'],
+      warnings: ['차량 경고', '차량 경고'],
+      refresh: ['상태 새로고침', '상태 새로고침'],
+      ping: ['연결 확인', '연결 확인'],
+    });
+  });
+
+  it('uses English names, including individual sensors, the climate switch, cabin temperature and range', async () => {
+    const { accessory, platform } = await launch(patConfig({
+      serviceNameLanguage: 'en',
+      climateAsSwitch: true,
+      individualDoorWindowSensors: true,
+      exposeRangeAsLightSensor: true,
+    }));
+    platform.stop();
+
+    const result = names(accessory);
+    expect(result['climate-switch']).toEqual(['Climate', 'Climate']);
+    expect(result['cabin-temperature']).toEqual(['Cabin Temperature', 'Cabin Temperature']);
+    expect(result.range).toEqual(['Range', 'Range']);
+    expect(result['door-front-left']).toEqual(['Front Left Door', 'Front Left Door']);
+    expect(result['window-rear-right']).toEqual(['Rear Right Window', 'Rear Right Window']);
+    expect(result.lock).toEqual(['Lock', 'Lock']);
+  });
+
+  it('names the engine sensor in the configured language', async () => {
+    const { accessory, platform } = await launch(patConfig({ serviceNameLanguage: 'en' }), mockClient([parseVehicleStatus(ICE_STATUS)]));
+    platform.stop();
+
+    expect(names(accessory).engine).toEqual(['Engine', 'Engine']);
+  });
+
+  it('on a language change keeps names the user set in the Home app and updates the default ones', async () => {
+    const first = await launch();
+    first.platform.stop();
+    const cached = first.accessory;
+    cached?.getServiceById(S.LockMechanism as never, 'lock')?.getCharacteristic(C.ConfiguredName).updateValue('내 차 잠금');
+
+    const second = await launch(patConfig({ serviceNameLanguage: 'en' }), mockClient(), cached ? [cached] : []);
+    second.platform.stop();
+
+    const result = names(second.accessory);
+    expect(result.lock).toEqual(['Lock', '내 차 잠금']);
+    expect(result.doors).toEqual(['Doors', 'Doors']);
+    expect(result.battery).toEqual(['Battery', 'Battery']);
+  });
+
+  it('migrates the earlier bilingual default names', async () => {
+    const cached = new FakePlatformAccessory('EV Vehicle', hap.uuid.generate('ev-device-id'));
+    const lock = cached.addService(S.LockMechanism, '잠금 Lock', 'lock');
+    lock.addOptionalCharacteristic(C.ConfiguredName);
+    lock.setCharacteristic(C.ConfiguredName, '잠금 Lock');
+
+    const { accessory, platform } = await launch(patConfig(), mockClient(), [cached]);
+    platform.stop();
+
+    expect(names(accessory).lock).toEqual(['잠금', '잠금']);
+  });
+});

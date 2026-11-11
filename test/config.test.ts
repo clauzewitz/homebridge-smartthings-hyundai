@@ -18,6 +18,7 @@ describe('parseOptions', () => {
       climateDuration: 10,
       climateDefog: false,
       exposeRangeAsLightSensor: false,
+      serviceNameLanguage: 'ko',
     });
   });
 
@@ -86,3 +87,24 @@ describe('polling interval minimum', () => {
     expect(parseOptions({ ...base, pollingInterval: 10 }).pollingIntervalSeconds).toBe(60);
   });
 });
+
+describe('serviceNameLanguage', () => {
+  it('defaults to ko without warning', () => {
+    const warn = vi.fn();
+    expect(parseOptions(base, warn).serviceNameLanguage).toBe('ko');
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('accepts ko and en', () => {
+    expect(parseOptions({ ...base, serviceNameLanguage: 'en' }).serviceNameLanguage).toBe('en');
+    expect(parseOptions({ ...base, serviceNameLanguage: 'ko' }).serviceNameLanguage).toBe('ko');
+  });
+
+  it.each([['fr'], ['EN'], [1], [null]])('replaces an invalid value %j with ko and warns', (value) => {
+    const warn = vi.fn();
+
+    expect(parseOptions({ ...base, serviceNameLanguage: value }, warn).serviceNameLanguage).toBe('ko');
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('using \'ko\''));
+  });
+});
+

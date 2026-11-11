@@ -1,5 +1,11 @@
 import type { PlatformConfig } from 'homebridge';
 
+import {
+  DEFAULT_SERVICE_NAME_LANGUAGE,
+  SERVICE_NAME_LANGUAGES,
+  type ServiceNameLanguage,
+} from './accessory/serviceNames.js';
+
 export const POLLING_INTERVAL_MIN_SECONDS = 60;
 export const POLLING_INTERVAL_DEFAULT_SECONDS = 60;
 export const CLIMATE_TEMPERATURE_MIN = 17;
@@ -25,6 +31,8 @@ export interface PluginOptions {
   climateDuration: number;
   climateDefog: boolean;
   exposeRangeAsLightSensor: boolean;
+  /** Language of the HomeKit service names (`ko` default, or `en`). Logs and settings stay bilingual. */
+  serviceNameLanguage: ServiceNameLanguage;
 }
 
 function bool(value: unknown, fallback: boolean): boolean {
@@ -49,6 +57,14 @@ export function parseOptions(config: PlatformConfig, warn?: (message: string) =>
       `Polling interval ${config.pollingInterval} s is below the minimum; using ${POLLING_INTERVAL_MIN_SECONDS} s.`,
     );
   }
+  const language = config.serviceNameLanguage;
+  const validLanguage = SERVICE_NAME_LANGUAGES.includes(language as ServiceNameLanguage);
+  if (language !== undefined && !validLanguage) {
+    warn?.(
+      `서비스 이름 언어 '${String(language)}' 는 지원하지 않아 '${DEFAULT_SERVICE_NAME_LANGUAGE}' 로 씁니다. / ` +
+      `Unsupported service name language '${String(language)}'; using '${DEFAULT_SERVICE_NAME_LANGUAGE}'.`,
+    );
+  }
   return {
     authMethod: config.authMethod === 'pat' ? 'pat' : 'oauth',
     individualDoorWindowSensors: bool(config.individualDoorWindowSensors, false),
@@ -65,6 +81,7 @@ export function parseOptions(config: PlatformConfig, warn?: (message: string) =>
     climateDuration: int(config.climateDuration, CLIMATE_DURATION_DEFAULT, CLIMATE_DURATION_MIN, CLIMATE_DURATION_MAX),
     climateDefog: bool(config.climateDefog, false),
     exposeRangeAsLightSensor: bool(config.exposeRangeAsLightSensor, false),
+    serviceNameLanguage: validLanguage ? language as ServiceNameLanguage : DEFAULT_SERVICE_NAME_LANGUAGE,
   };
 }
 

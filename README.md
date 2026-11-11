@@ -65,6 +65,13 @@ Homebridge 플러그인은 HomeKit accessory 가 놓일 방을 정할 수 없습
 
 accessory 의 UUID 는 SmartThings 디바이스 ID 로 만들어집니다. 그래서 Homebridge 를 재시작하거나 플러그인을 업데이트해도 홈 앱에서 지정한 방과 이름이 그대로 유지됩니다.
 
+#### 서비스 이름 언어
+
+홈 앱에 보이는 서비스 이름(잠금, 공조, 도어 등)은 `serviceNameLanguage` 로 한국어(`ko`, 기본) 또는 영어(`en`)를 고릅니다. 로그와 설정 화면은 항상 한국어·영어로 표시합니다.
+
+- **페어링 전에 정하세요.** 홈 앱은 페어링할 때의 이름을 계속 쓸 수 있습니다.
+- 이미 추가한 뒤 언어를 바꾸면 플러그인은 기본 이름만 새 언어로 바꾸고, 홈 앱에서 직접 바꾼 이름은 건드리지 않습니다. 홈 앱에 그대로 예전 이름이 보이면 홈 앱에서 이름을 바꾸거나 기기를 다시 추가하세요.
+
 > 참고: Siri 는 '에어컨 다 켜줘' 처럼 서비스 종류 단위로 명령을 묶습니다. 차량을 다른 방에 두어도 집 전체 명령에서는 빠지지 않습니다. 이런 명령에서 차량을 빼려면 설정에서 **공조를 스위치로 등록** 을 켜세요.
 
 ### 설정 항목
@@ -80,6 +87,7 @@ accessory 의 UUID 는 SmartThings 디바이스 ID 로 만들어집니다. 그�
 | `climateDefog` | 앞유리 김서림 제거 | `false` |
 | `exposeRangeAsLightSensor` | 주행 가능 거리를 조도 센서(lux = km)로 표시 | `false` |
 | `individualDoorWindowSensors` | 도어 4개·창문 4개를 각각 센서로 표시 | `false` |
+| `serviceNameLanguage` | 홈 앱 서비스 이름 언어: `ko` 또는 `en`. 지원하지 않는 값은 `ko` 로 쓰고 로그에 알립니다 | `ko` |
 | `authMethod` | 인증 방식: `oauth` 또는 `pat` | `oauth` |
 | `personalAccessToken` | PAT (인증 방식이 `pat` 일 때만) | — |
 
@@ -153,6 +161,13 @@ Homebridge plugins cannot set the room of a HomeKit accessory; rooms belong to t
 
 Accessory UUIDs are derived from the SmartThings device ID, so the room and name you choose in the Home app are kept across Homebridge restarts and plugin updates.
 
+#### Service name language
+
+The service names shown in the Home app (Lock, Climate, Doors, ...) are Korean (`ko`, default) or English (`en`), set with `serviceNameLanguage`. Logs and the settings screen are always bilingual.
+
+- **Choose before pairing.** The Home app may keep the names it stored when the accessory was paired.
+- If you change the language after adding the accessory, the plugin switches only the default names to the new language and never touches names you changed in the Home app. If the Home app still shows the old names, rename the services in the Home app or add the accessory again.
+
 > Note: Siri groups commands by service type, such as "turn on all air conditioners". Putting the vehicle in a separate room does not exclude it from home-wide commands. To exclude it, enable **Expose climate as a switch** in the settings.
 
 ### Options
@@ -168,6 +183,7 @@ Accessory UUIDs are derived from the SmartThings device ID, so the room and name
 | `climateDefog` | Windshield defog | `false` |
 | `exposeRangeAsLightSensor` | Show driving range as a light sensor (lux = km) | `false` |
 | `individualDoorWindowSensors` | One sensor per door and per window | `false` |
+| `serviceNameLanguage` | Language of the Home app service names: `ko` or `en`. Unsupported values fall back to `ko` with a log notice | `ko` |
 | `authMethod` | Authorization method: `oauth` or `pat` | `oauth` |
 | `personalAccessToken` | PAT (only when the method is `pat`) | — |
 

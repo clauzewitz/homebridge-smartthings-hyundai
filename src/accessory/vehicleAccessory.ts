@@ -13,12 +13,12 @@ import {
   supportsAttribute,
   VehicleCommands,
   type CommandResult,
-  type FourPositions,
   type VehicleCommand,
   type VehicleDevice,
   type VehicleStatus,
 } from '../smartthings/vehicle.js';
 import type { StatusSource, StatusSourceFactory } from '../status/statusSource.js';
+import { defaultServiceNames, POSITIONS, serviceName } from './serviceNames.js';
 
 /** The subset of SmartThingsClient the accessory and its status source need; a mock in tests. */
 export interface VehicleApi {
@@ -42,13 +42,8 @@ export const CLIMATE_ON_DEBOUNCE_MS = 1_000;
 type ServiceType = WithUUID<typeof Service>;
 type CharacteristicType = WithUUID<new () => Characteristic>;
 
-const POSITIONS: ReadonlyArray<{ key: keyof FourPositions; id: string; ko: string; en: string }> = [
-  { key: 'frontLeft', id: 'front-left', ko: '앞 왼쪽', en: 'Front Left' },
-  { key: 'frontRight', id: 'front-right', ko: '앞 오른쪽', en: 'Front Right' },
-  { key: 'rearLeft', id: 'rear-left', ko: '뒤 왼쪽', en: 'Rear Left' },
-  { key: 'rearRight', id: 'rear-right', ko: '뒤 오른쪽', en: 'Rear Right' },
-];
 
+/** Warning names for the log only (bilingual); they are never HomeKit service names. */
 const WARNING_LABELS: ReadonlyArray<{ key: keyof VehicleStatus['warnings']; label: string }> = [
   { key: 'fuel', label: '연료 fuel' },
   { key: 'smartKeyBattery', label: '스마트키 배터리 smart key battery' },
@@ -183,18 +178,18 @@ export class VehicleAccessory {
     }
     if (this.options.individualDoorWindowSensors) {
       for (const position of POSITIONS) {
-        this.setupContact(`door-${position.id}`, `${position.ko} 도어 ${position.en} Door`, (status) => isPositionOpen(status.doors[position.key]));
-        this.setupContact(`window-${position.id}`, `${position.ko} 창문 ${position.en} Window`, (status) => isPositionOpen(status.windows[position.key]));
+        this.setupContact(`door-${position.id}`, (status) => isPositionOpen(status.doors[position.key]));
+        this.setupContact(`window-${position.id}`, (status) => isPositionOpen(status.windows[position.key]));
       }
     } else {
-      this.setupContact('doors', '도어 Doors', (status) => isAnyPositionOpen(status.doors));
-      this.setupContact('windows', '창문 Windows', (status) => isAnyPositionOpen(status.windows));
+      this.setupContact('doors', (status) => isAnyPositionOpen(status.doors));
+      this.setupContact('windows', (status) => isAnyPositionOpen(status.windows));
     }
-    this.setupContact('warnings', '차량 경고 Warnings', (status) => this.activeWarnings(status).length > 0);
-    this.setupMomentarySwitch('refresh', '상태 새로고침 Refresh', () => this.sendRefresh());
-    this.setupMomentarySwitch('ping', '연결 확인 Ping', () => this.sendPing());
+    this.setupContact('warnings', (status) => this.activeWarnings(status).length > 0);
+    this.setupMomentarySwitch('refresh', () => this.sendRefresh());
+    this.setupMomentarySwitch('ping', () => this.sendPing());
     if (this.options.exposeRangeAsLightSensor) {
-      const service = this.ensureService(Service.LightSensor, 'range', '주행 가능 거리 Range');
+      const service = this.ensureService(Service.LightSensor, 'range');
       this.bindGet(service, this.hap.Characteristic.CurrentAmbientLightLevel, (status) =>
         Math.min(100_000, Math.max(0.0001, status.rangeKm ?? 0)));
     }
@@ -217,14 +212,34 @@ export class VehicleAccessory {
       .setCharacteristic(Characteristic.SerialNumber, maskDeviceId(this.device.deviceId));
   }
 
-  private ensureService(type: ServiceType, subtype: string, name: string): Service {
+  /**
+   * Get or add a service named in the configured language (`serviceNameLanguage`).
+   *
+   * For a service restored from cache, `Name` (read-only for HomeKit controllers) is always updated, but
+   * `ConfiguredName` (writable by the Home app, kept in the accessory cache) is only replaced while it still
+   * holds one of our default names, so a name the user set in the Home app is never overwritten.
+   * The Home app may still show the name it stored when the accessory was paired.
+   */
+  private ensureService(type: ServiceType, subtype: string): Service {
+    const { Characteristic } = this.hap;
+    const name = serviceName(subtype, this.options.serviceNameLanguage);
     const existing = this.accessory.getServiceById(type, subtype);
     if (existing) {
+      existing.getCharacteristic(Characteristic.Name).updateValue(name);
+      if (!existing.testCharacteristic(Characteristic.ConfiguredName)) {
+        existing.addOptionalCharacteristic(Characteristic.ConfiguredName);
+        existing.setCharacteristic(Characteristic.ConfiguredName, name);
+        return existing;
+      }
+      const configured = existing.getCharacteristic(Characteristic.ConfiguredName);
+      if (typeof configured.value !== 'string' || configured.value === '' || defaultServiceNames(subtype).has(configured.value)) {
+        configured.updateValue(name);
+      }
       return existing;
     }
     const service = this.accessory.addService(type, name, subtype);
-    service.addOptionalCharacteristic(this.hap.Characteristic.ConfiguredName);
-    service.setCharacteristic(this.hap.Characteristic.ConfiguredName, name);
+    service.addOptionalCharacteristic(Characteristic.ConfiguredName);
+    service.setCharacteristic(Characteristic.ConfiguredName, name);
     return service;
   }
 
@@ -248,7 +263,7 @@ export class VehicleAccessory {
 
   private setupLock(): void {
     const { Characteristic, Service } = this.hap;
-    const service = this.ensureService(Service.LockMechanism, 'lock', '잠금 Lock');
+    const service = this.ensureService(Service.LockMechanism, 'lock');
     this.bindGet(service, Characteristic.LockCurrentState, (status) => this.lockCurrent(status));
     this.bindGet(service, Characteristic.LockTargetState, (status) => this.lockTarget(status))
       .onSet((value) => this.setLockTarget(value));
@@ -256,7 +271,7 @@ export class VehicleAccessory {
 
   private setupHeaterCooler(): void {
     const { Characteristic, Service } = this.hap;
-    const service = this.ensureService(Service.HeaterCooler, 'climate', '공조 Climate');
+    const service = this.ensureService(Service.HeaterCooler, 'climate');
     this.bindGet(service, Characteristic.Active, (status) => this.climateOn(status) ? 1 : 0)
       .onSet((value) => this.setClimate(value === 1 || value === true));
     this.bindGet(service, Characteristic.CurrentHeaterCoolerState, (status) =>
@@ -279,10 +294,10 @@ export class VehicleAccessory {
 
   private setupClimateSwitch(): void {
     const { Characteristic, Service } = this.hap;
-    const service = this.ensureService(Service.Switch, 'climate-switch', '공조 Climate');
+    const service = this.ensureService(Service.Switch, 'climate-switch');
     this.bindGet(service, Characteristic.On, (status) => this.climateOn(status))
       .onSet((value) => this.setClimate(value === true || value === 1));
-    const cabin = this.ensureService(Service.TemperatureSensor, 'cabin-temperature', '실내 온도 Cabin Temperature');
+    const cabin = this.ensureService(Service.TemperatureSensor, 'cabin-temperature');
     this.bindGet(cabin, Characteristic.CurrentTemperature, (status) => clamp(status.cabinTemperature ?? 0, -100, 100));
   }
 
@@ -292,7 +307,7 @@ export class VehicleAccessory {
     }
     this.boundServices.add('battery');
     const { Characteristic, Service } = this.hap;
-    const service = this.ensureService(Service.Battery, 'battery', '배터리 Battery');
+    const service = this.ensureService(Service.Battery, 'battery');
     this.bindGet(service, Characteristic.BatteryLevel, (status) => Math.round(clamp(status.battery.level ?? 0, 0, 100)));
     this.bindGet(service, Characteristic.ChargingState, (status) =>
       status.battery.chargingState === 'charging'
@@ -310,25 +325,25 @@ export class VehicleAccessory {
     }
     this.boundServices.add('engine');
     const { Characteristic, Service } = this.hap;
-    const service = this.ensureService(Service.OccupancySensor, 'engine', '시동 Engine');
+    const service = this.ensureService(Service.OccupancySensor, 'engine');
     this.bindGet(service, Characteristic.OccupancyDetected, (status) =>
       isEngineOn(status)
         ? Characteristic.OccupancyDetected.OCCUPANCY_DETECTED
         : Characteristic.OccupancyDetected.OCCUPANCY_NOT_DETECTED);
   }
 
-  private setupContact(subtype: string, name: string, isOpen: (status: VehicleStatus) => boolean | undefined): void {
+  private setupContact(subtype: string, isOpen: (status: VehicleStatus) => boolean | undefined): void {
     const { Characteristic, Service } = this.hap;
-    const service = this.ensureService(Service.ContactSensor, subtype, name);
+    const service = this.ensureService(Service.ContactSensor, subtype);
     this.bindGet(service, Characteristic.ContactSensorState, (status) =>
       isOpen(status)
         ? Characteristic.ContactSensorState.CONTACT_NOT_DETECTED
         : Characteristic.ContactSensorState.CONTACT_DETECTED);
   }
 
-  private setupMomentarySwitch(subtype: string, name: string, send: () => Promise<void>): void {
+  private setupMomentarySwitch(subtype: string, send: () => Promise<void>): void {
     const { Characteristic, Service } = this.hap;
-    const service = this.ensureService(Service.Switch, subtype, name);
+    const service = this.ensureService(Service.Switch, subtype);
     service.getCharacteristic(Characteristic.On)
       .onGet(() => false)
       .onSet((value) => {
