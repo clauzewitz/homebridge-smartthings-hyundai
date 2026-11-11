@@ -5,10 +5,13 @@ import {
   STATUS_REQUESTS_PER_WINDOW,
 } from '../smartthings/limits.js';
 
-export interface StatusPollerOptions {
+export interface StatusPollerOptions<T> {
   pollIntervalMs: number;
-  /** Performs one status read. Errors are caught and logged by the poller. */
-  read: () => Promise<void>;
+  /**
+   * Performs one status read and returns what was read, or `undefined` when nothing was read.
+   * Errors are caught and logged by the poller.
+   */
+  read: () => Promise<T | undefined>;
   log: { debug(message: string): void; warn(message: string): void };
   confirmIntervalMs?: number;
   confirmTimeoutMs?: number;
@@ -16,9 +19,10 @@ export interface StatusPollerOptions {
   maxReadsPerWindow?: number;
 }
 
-interface Confirmation {
+interface Confirmation<T> {
   deadline: number;
-  isDone: () => boolean;
+  /** Judged with the value returned by the latest read, not with any cached state. */
+  isDone: (value: T) => boolean;
   onTimeout: () => void;
 }
 
@@ -27,7 +31,7 @@ interface Confirmation {
  * confirmation never overlap. Every read passes a sliding-window budget (10 reads per 60 s by default),
  * which also covers any fixed 60 s window the server uses.
  */
-export class StatusPoller {
+export class StatusPoller<T = unknown> {
   private readonly pollIntervalMs: number;
   private readonly confirmIntervalMs: number;
   private readonly confirmTimeoutMs: number;
@@ -35,11 +39,11 @@ export class StatusPoller {
   private readonly maxReadsPerWindow: number;
   private timer?: ReturnType<typeof setTimeout>;
   private readTimes: number[] = [];
-  private confirmation?: Confirmation;
+  private confirmation?: Confirmation<T>;
   private reading = false;
   private running = false;
 
-  constructor(private readonly options: StatusPollerOptions) {
+  constructor(private readonly options: StatusPollerOptions<T>) {
     this.pollIntervalMs = options.pollIntervalMs;
     this.confirmIntervalMs = options.confirmIntervalMs ?? COMMAND_CONFIRM_INTERVAL_MS;
     this.confirmTimeoutMs = options.confirmTimeoutMs ?? COMMAND_CONFIRM_TIMEOUT_MS;
@@ -66,10 +70,10 @@ export class StatusPoller {
   }
 
   /**
-   * Switch to command confirmation: read every `confirmIntervalMs` until `isDone()` or the timeout.
-   * A newer confirmation replaces an older one.
+   * Switch to command confirmation: read every `confirmIntervalMs` until `isDone(value)` holds for a freshly
+   * read value, or the timeout. A newer confirmation replaces an older one.
    */
-  confirm(isDone: () => boolean, onTimeout: () => void): void {
+  confirm(isDone: (value: T) => boolean, onTimeout: () => void): void {
     if (!this.running) {
       return;
     }
@@ -116,8 +120,9 @@ export class StatusPoller {
 
     this.readTimes.push(now);
     this.reading = true;
+    let value: T | undefined;
     try {
-      await this.options.read();
+      value = await this.options.read();
     } catch (error) {
       this.options.log.warn(`상태 조회 오류 / Status read error: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
@@ -132,7 +137,7 @@ export class StatusPoller {
       this.schedule(this.pollIntervalMs);
       return;
     }
-    if (confirmation.isDone()) {
+    if (value !== undefined && confirmation.isDone(value)) {
       this.confirmation = undefined;
       this.schedule(this.pollIntervalMs);
       return;

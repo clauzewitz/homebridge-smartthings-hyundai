@@ -14,10 +14,10 @@ export interface PollingStatusSourceOptions {
  * command confirmation every 10 s for up to 60 s).
  */
 export class PollingStatusSource implements StatusSource {
-  private readonly poller: StatusPoller;
+  private readonly poller: StatusPoller<VehicleStatus>;
 
   constructor(private readonly options: PollingStatusSourceOptions) {
-    this.poller = new StatusPoller({
+    this.poller = new StatusPoller<VehicleStatus>({
       pollIntervalMs: options.pollIntervalMs,
       read: () => this.read(),
       log: options.log,
@@ -32,16 +32,22 @@ export class PollingStatusSource implements StatusSource {
     this.poller.stop();
   }
 
-  confirm(isDone: () => boolean, onTimeout: () => void): void {
+  confirm(isDone: (status: VehicleStatus) => boolean, onTimeout: () => void): void {
     this.poller.confirm(isDone, onTimeout);
   }
 
-  /** A failure while reading or while the sink applies the status is reported as a read failure. */
-  private async read(): Promise<void> {
+  /**
+   * A failure while reading or while the sink applies the status is reported as a read failure and yields
+   * no status for confirmation. Otherwise the fresh status is returned so confirmation judges exactly it.
+   */
+  private async read(): Promise<VehicleStatus | undefined> {
     try {
-      this.options.sink.onStatus(await this.options.getStatus());
+      const status = await this.options.getStatus();
+      this.options.sink.onStatus(status);
+      return status;
     } catch (error) {
       this.options.sink.onReadFailure(error);
+      return undefined;
     }
   }
 }

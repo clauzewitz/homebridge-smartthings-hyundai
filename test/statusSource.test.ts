@@ -15,7 +15,7 @@ const EV_STATUS = parseVehicleStatus(EV_VEHICLE_STATUS);
 class FakeStatusSource implements StatusSource {
   sink?: StatusSink;
   started = false;
-  confirmations: Array<{ isDone: () => boolean; onTimeout: () => void }> = [];
+  confirmations: Array<{ isDone: (status: VehicleStatus) => boolean; onTimeout: () => void }> = [];
 
   create = (context: StatusSourceContext): StatusSource => {
     this.sink = context.sink;
@@ -30,7 +30,7 @@ class FakeStatusSource implements StatusSource {
     this.started = false;
   }
 
-  confirm(isDone: () => boolean, onTimeout: () => void): void {
+  confirm(isDone: (status: VehicleStatus) => boolean, onTimeout: () => void): void {
     this.confirmations.push({ isDone, onTimeout });
   }
 
@@ -54,7 +54,7 @@ function setup(config = patConfig()) {
     fake.create,
   );
   const lock = () => accessory.getServiceById(S.LockMechanism as never, 'lock');
-  return { vehicle, fake, client, lock };
+  return { vehicle, fake, client, lock, accessory };
 }
 
 beforeEach(() => {
@@ -89,7 +89,7 @@ describe('VehicleAccessory with an injected StatusSource', () => {
     await expect(current?.handleGetRequest()).resolves.toBe(C.LockCurrentState.UNSECURED);
   });
 
-  it('asks the source to confirm an accepted command, and the confirmation sees later snapshots', async () => {
+  it('asks the source to confirm an accepted command with a predicate on the given status', async () => {
     const { fake, client, lock, vehicle } = setup();
     fake.push(EV_STATUS);
 
@@ -99,9 +99,8 @@ describe('VehicleAccessory with an injected StatusSource', () => {
 
     expect(client.executeCommand).toHaveBeenCalledWith('ev-device-id', VehicleCommands.unlock());
     expect(fake.confirmations).toHaveLength(1);
-    expect(fake.confirmations[0].isDone()).toBe(false);
-    fake.push({ ...EV_STATUS, lockState: 'unlocked' });
-    expect(fake.confirmations[0].isDone()).toBe(true);
+    expect(fake.confirmations[0].isDone(EV_STATUS)).toBe(false);
+    expect(fake.confirmations[0].isDone({ ...EV_STATUS, lockState: 'unlocked' })).toBe(true);
   });
 
   it('reverts the target when the source reports a confirmation timeout', async () => {
@@ -116,4 +115,41 @@ describe('VehicleAccessory with an injected StatusSource', () => {
 
     expect(target?.value).toBe(C.LockTargetState.SECURED);
   });
+
+  it('passes pure predicates: the result depends only on the status argument, not on what the accessory cached', async () => {
+    const { fake, lock, vehicle } = setup();
+    fake.push(EV_STATUS);
+
+    await lock()?.getCharacteristic(C.LockTargetState).handleSetRequest(C.LockTargetState.UNSECURED);
+    await vi.advanceTimersByTimeAsync(0);
+    const isDone = fake.confirmations[0].isDone;
+
+    // The accessory's cache now says 'unlocked', but the predicate still judges its own argument.
+    fake.push({ ...EV_STATUS, lockState: 'unlocked' });
+    expect(isDone(EV_STATUS)).toBe(false);
+    // ...and the other way round.
+    fake.push(EV_STATUS);
+    expect(isDone({ ...EV_STATUS, lockState: 'unlocked' })).toBe(true);
+    vehicle.stop();
+  });
+
+  it('builds climate and refresh predicates from the status argument', async () => {
+    const { fake, client, vehicle, accessory } = setup();
+    fake.push(EV_STATUS);
+
+    await accessory.getServiceById(S.HeaterCooler as never, 'climate')?.getCharacteristic(C.Active).handleSetRequest(1);
+    await vi.advanceTimersByTimeAsync(1_000);
+    const climateOn = fake.confirmations[0].isDone;
+    expect(client.executeCommand).toHaveBeenCalledTimes(1);
+    expect(climateOn(EV_STATUS)).toBe(false);
+    expect(climateOn({ ...EV_STATUS, hvacState: 'on' })).toBe(true);
+
+    await accessory.getServiceById(S.Switch as never, 'refresh')?.getCharacteristic(C.On).handleSetRequest(true);
+    await vi.advanceTimersByTimeAsync(0);
+    const refreshed = fake.confirmations[1].isDone;
+    expect(refreshed(EV_STATUS)).toBe(false);
+    expect(refreshed({ ...EV_STATUS, lastUpdated: new Date('2030-01-01T00:00:00Z') })).toBe(true);
+    vehicle.stop();
+  });
 });
+

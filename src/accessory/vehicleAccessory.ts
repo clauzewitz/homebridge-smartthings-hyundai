@@ -499,7 +499,7 @@ export class VehicleAccessory {
     this.runCommand(
       unlock ? '잠금 해제 unlock' : '잠금 lock',
       unlock ? VehicleCommands.unlock() : VehicleCommands.lock(),
-      () => this.pendingLockTarget === undefined,
+      (status) => this.lockMatches(status, target),
       () => this.revertLockTarget(),
     );
   }
@@ -567,7 +567,7 @@ export class VehicleAccessory {
     }
     this.pendingClimateOn = on;
     if (!on) {
-      this.runCommand('공조 끄기 climate off', VehicleCommands.climateOff(), () => this.pendingClimateOn === undefined, () => this.revertClimate());
+      this.runCommand('공조 끄기 climate off', VehicleCommands.climateOff(), (status) => !this.isHvacOn(status), () => this.revertClimate());
       return;
     }
     this.later(CLIMATE_ON_DEBOUNCE_MS, () => {
@@ -578,7 +578,7 @@ export class VehicleAccessory {
       this.runCommand(
         `공조 켜기 climate on (${settings.temperature}℃, ${settings.durationMinutes}min, defog ${settings.defog ? 'on' : 'off'})`,
         VehicleCommands.climateOn(settings),
-        () => this.pendingClimateOn === undefined,
+        (status) => this.isHvacOn(status),
         () => this.revertClimate(),
       );
     });
@@ -593,7 +593,7 @@ export class VehicleAccessory {
     await this.client.executeCommand(this.device.deviceId, VehicleCommands.refresh());
     this.log.info(this.prefix('새로고침 요청 접수 / Refresh accepted'));
     this.source.confirm(
-      () => (this.status?.lastUpdated?.getTime() ?? 0) > before,
+      (status) => (status.lastUpdated?.getTime() ?? 0) > before,
       () => this.log.info(this.prefix('새로고침 후 새 데이터가 아직 없습니다. / No newer data after refresh yet.')),
     );
   }
@@ -608,7 +608,7 @@ export class VehicleAccessory {
   // -------------------------------------------------------------------------
 
   /** Send a command in the background; HomeKit writes return immediately. */
-  private runCommand(label: string, command: VehicleCommand, isDone: () => boolean, revert: () => void): void {
+  private runCommand(label: string, command: VehicleCommand, isDone: (status: VehicleStatus) => boolean, revert: () => void): void {
     this.log.info(this.prefix(`명령 전송 / Sending command: ${label}`));
     this.client.executeCommand(this.device.deviceId, command)
       .then(() => {

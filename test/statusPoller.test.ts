@@ -87,4 +87,20 @@ describe('StatusPoller', () => {
 
     expect(read).not.toHaveBeenCalled();
   });
+
+  it('passes the value of the latest read to isDone and ignores reads that produced nothing', async () => {
+    const values: Array<number | undefined> = [1, undefined, 3];
+    const read = vi.fn(async () => values.shift());
+    const isDone = vi.fn((value: number) => value === 3);
+    const poller = new StatusPoller<number>({ pollIntervalMs: 60_000, read, log: log() });
+    poller.start();
+    await vi.advanceTimersByTimeAsync(0);
+
+    poller.confirm(isDone, vi.fn());
+    await vi.advanceTimersByTimeAsync(20_000);
+    poller.stop();
+
+    expect(isDone.mock.calls).toEqual([[3]]);
+  });
 });
+

@@ -15,8 +15,11 @@ export interface StatusSink {
 export interface StatusSource {
   start(): void;
   stop(): void;
-  /** Called after a command is ACCEPTED: keep checking until `isDone()` or give up and call `onTimeout()`. */
-  confirm(isDone: () => boolean, onTimeout: () => void): void;
+  /**
+   * Called after a command is ACCEPTED: keep checking until `isDone(status)` holds for a freshly received
+   * status, or give up and call `onTimeout()`. `isDone` must judge only its argument (no cached state).
+   */
+  confirm(isDone: (status: VehicleStatus) => boolean, onTimeout: () => void): void;
 }
 
 export interface StatusSourceContext {

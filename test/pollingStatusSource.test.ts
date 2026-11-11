@@ -113,3 +113,51 @@ describe('createPollingStatusSource', () => {
     expect(client.getStatus.mock.calls).toEqual([['first'], ['second']]);
   });
 });
+
+describe('PollingStatusSource confirmation predicate', () => {
+  it('judges each freshly read status, independent of what the sink stores', async () => {
+    const unlocked = { ...STATUS, lockState: 'unlocked' };
+    const getStatus = vi.fn()
+      .mockResolvedValueOnce(STATUS)
+      .mockResolvedValueOnce(STATUS)
+      .mockResolvedValue(unlocked);
+    const target = sink(); // stores nothing
+    const isDone = vi.fn((status: typeof STATUS) => status.lockState === 'unlocked');
+    const onTimeout = vi.fn();
+    const source = new PollingStatusSource({ pollIntervalMs: 60_000, getStatus, sink: target, log: log() });
+    source.start();
+    await vi.advanceTimersByTimeAsync(0);
+
+    source.confirm(isDone, onTimeout);
+    await vi.advanceTimersByTimeAsync(10_000);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(isDone.mock.calls.map(([status]) => status.lockState)).toEqual(['locked', 'unlocked']);
+    expect(getStatus).toHaveBeenCalledTimes(3);
+
+    // Back to the regular interval: no further confirmation reads.
+    await vi.advanceTimersByTimeAsync(50_000);
+    source.stop();
+    expect(getStatus).toHaveBeenCalledTimes(3);
+    expect(onTimeout).not.toHaveBeenCalled();
+  });
+
+  it('does not judge a read that failed while being applied', async () => {
+    const unlocked = { ...STATUS, lockState: 'unlocked' };
+    const target = sink();
+    target.onStatus.mockImplementation(() => {
+      throw new Error('apply failed');
+    });
+    const isDone = vi.fn(() => true);
+    const source = new PollingStatusSource({ pollIntervalMs: 60_000, getStatus: async () => unlocked, sink: target, log: log() });
+    source.start();
+    await vi.advanceTimersByTimeAsync(0);
+
+    source.confirm(isDone, vi.fn());
+    await vi.advanceTimersByTimeAsync(10_000);
+    source.stop();
+
+    expect(isDone).not.toHaveBeenCalled();
+    expect(target.onReadFailure).toHaveBeenCalled();
+  });
+});
+
