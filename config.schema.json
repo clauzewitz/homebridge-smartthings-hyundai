@@ -46,7 +46,7 @@
         "type": "integer",
         "default": 60,
         "minimum": 60,
-        "description": "최소 60초입니다. SmartThings 는 상태 조회를 60초에 10회로 제한하고, 유료 API 플랜은 월 10만 회까지 호출할 수 있습니다(같은 계정의 다른 연동과 공유). 60초 주기는 차량 1대에 월 약 4만 3천 회입니다. / Minimum 60 seconds. SmartThings limits status reads to 10 per 60 seconds, and the paid API plan allows 100,000 calls per month (shared with other integrations on the account). A 60-second interval uses about 43,000 calls per month per vehicle."
+        "description": "최소 60초입니다. SmartThings 는 상태 조회를 60초에 10회로 제한하고, 유료 API 플랜에는 월 호출 한도가 있습니다(같은 계정의 다른 연동과 함께 씀, 한도는 SmartThings Developer Center 에서 확인). 60초 주기는 차량 1대에 월 약 4만 3천 회입니다. / Minimum 60 seconds. SmartThings limits status reads to 10 per 60 seconds, and the paid API plan has a monthly call limit (shared with other integrations on the account; check it in the SmartThings Developer Center). A 60-second interval uses about 43,000 calls per month per vehicle."
       },
       "allowUnlock": {
         "title": "잠금 해제 허용 / Allow unlock",
