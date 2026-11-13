@@ -3,6 +3,7 @@
   "pluginType": "platform",
   "singular": true,
   "strictValidation": false,
+  "customUi": true,
   "headerDisplay": "SmartThings 에 등록된 현대·제네시스·기아 차량을 HomeKit 에 연결합니다. / Connects Hyundai, Genesis and Kia vehicles registered in SmartThings to HomeKit.",
   "schema": {
     "type": "object",

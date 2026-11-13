@@ -1,0 +1,148 @@
+<div class="card mb-3">
+  <div class="card-body">
+    <h5 class="card-title">SmartThings 연결 / SmartThings connection</h5>
+    <p class="small text-muted mb-2">
+      OAuth 를 쓰려면 SmartThings 유료 API 플랜(Developer Plan)이 필요할 수 있습니다. 아직 실제 SmartThings 로 검증하지 않은 기능입니다. /
+      OAuth may require a paid SmartThings API plan (Developer Plan). Not yet verified against the live SmartThings API.
+    </p>
+    <div id="status" class="alert alert-secondary py-2 mb-3">상태 확인 중… / Checking…</div>
+
+    <h6>1. 앱 준비 / Prepare the app</h6>
+    <div class="mb-2">
+      <label class="form-label small" for="pat">
+        임시 PAT(r:smartapps, w:smartapps 권한) — 이 요청에만 쓰고 저장하지 않습니다 /
+        Temporary PAT (r:smartapps, w:smartapps) — used for this request only, never stored
+      </label>
+      <input id="pat" type="password" class="form-control form-control-sm" autocomplete="off">
+    </div>
+    <button id="createApp" class="btn btn-sm btn-primary">앱 만들기 / Create app</button>
+    <details class="mt-2">
+      <summary class="small">직접 입력(이미 만든 앱) / Enter an existing app</summary>
+      <div class="mt-2">
+        <input id="clientId" class="form-control form-control-sm mb-1" placeholder="client id" autocomplete="off">
+        <input id="clientSecret" type="password" class="form-control form-control-sm mb-1" placeholder="client secret" autocomplete="off">
+        <input id="appId" class="form-control form-control-sm mb-1" placeholder="app id (선택 / optional)" autocomplete="off">
+        <input id="manualRedirect" class="form-control form-control-sm mb-1" placeholder="redirect URI (기본 / default https://localhost/callback)" autocomplete="off">
+        <button id="saveManual" class="btn btn-sm btn-secondary">저장 / Save</button>
+      </div>
+    </details>
+    <details class="mt-2">
+      <summary class="small">redirect URI 바꾸기(PAT 필요) / Change the redirect URI (needs the PAT)</summary>
+      <div class="mt-2">
+        <select id="redirectCandidate" class="form-select form-select-sm mb-1"></select>
+        <button id="updateRedirect" class="btn btn-sm btn-secondary">변경 / Update</button>
+      </div>
+    </details>
+
+    <h6 class="mt-3">2. 로그인 / Log in</h6>
+    <ol class="small">
+      <li>'로그인 링크 열기' 를 누르고 SmartThings 에서 승인합니다. / Click 'Open login link' and approve in SmartThings.</li>
+      <li>브라우저가 '연결할 수 없음' 페이지를 보여도 정상입니다. 주소창의 URL 전체를 복사합니다. / The browser shows a 'cannot connect' page — that is expected. Copy the whole URL from the address bar.</li>
+      <li>아래 칸에 붙여 넣고 '연결 완료' 를 누릅니다. / Paste it below and click 'Finish'.</li>
+    </ol>
+    <button id="startAuth" class="btn btn-sm btn-primary mb-2">로그인 링크 열기 / Open login link</button>
+    <input id="redirectInput" class="form-control form-control-sm mb-2" placeholder="https://localhost/callback?code=…&amp;state=…" autocomplete="off">
+    <button id="completeAuth" class="btn btn-sm btn-success">연결 완료 / Finish</button>
+    <button id="disconnect" class="btn btn-sm btn-outline-danger ms-2">연결 해제 / Disconnect</button>
+    <p class="small text-muted mt-2 mb-0">
+      연결한 뒤 플러그인 설정에서 인증 방식을 OAuth 로 두고 Homebridge(child bridge)를 재시작하세요. /
+      After connecting, keep the authorization method on OAuth and restart Homebridge (the child bridge).
+    </p>
+  </div>
+</div>
+
+<script>
+(async () => {
+  const $ = (id) => document.getElementById(id);
+
+  function render(status) {
+    const lines = [];
+    if (!status.app) {
+      lines.push('앱 없음 / No app yet');
+    } else {
+      const source = status.app.source === 'created' ? '플러그인이 만든 앱 / created by the plugin' : '직접 입력 / entered by hand';
+      lines.push(`앱 / App: ${status.app.appName || status.app.appId || '-'} (${source})`);
+      lines.push(`redirect: ${status.app.redirectUri}`);
+    }
+    if (status.reauthRequired) {
+      lines.push('⚠️ 다시 로그인 필요 / Login required again');
+    } else if (status.connected) {
+      lines.push(`연결됨 / Connected (토큰 만료 / token expires ${new Date(status.expiresAt).toLocaleString()})`);
+    } else {
+      lines.push('로그인 전 / Not logged in');
+    }
+    $('status').textContent = lines.join(' · ');
+    const select = $('redirectCandidate');
+    select.replaceChildren(...status.redirectCandidates.map((uri) => new Option(uri, uri, false, status.app && status.app.redirectUri === uri)));
+  }
+
+  async function call(path, body) {
+    homebridge.showSpinner();
+    try {
+      const status = await homebridge.request(path, body);
+      if (status && status.redirectCandidates) {
+        render(status);
+      }
+      return status;
+    } catch (error) {
+      homebridge.toast.error(error.message || String(error));
+      return undefined;
+    } finally {
+      homebridge.hideSpinner();
+    }
+  }
+
+  $('createApp').addEventListener('click', async () => {
+    let result = await call('/app/create', { pat: $('pat').value });
+    if (!result && confirm('예전에 만든 앱이 있다면 새 앱을 하나 더 만들까요? / Create another app anyway?')) {
+      result = await call('/app/create', { pat: $('pat').value, allowAdditional: true });
+    }
+    $('pat').value = '';
+    if (result) {
+      homebridge.toast.success('앱을 만들었습니다 / App created');
+    }
+  });
+
+  $('saveManual').addEventListener('click', async () => {
+    const result = await call('/app/manual', {
+      clientId: $('clientId').value, clientSecret: $('clientSecret').value, appId: $('appId').value, redirectUri: $('manualRedirect').value,
+    });
+    $('clientSecret').value = '';
+    if (result) {
+      homebridge.toast.success('저장했습니다 / Saved');
+    }
+  });
+
+  $('updateRedirect').addEventListener('click', async () => {
+    const result = await call('/app/redirect', { pat: $('pat').value, redirectUri: $('redirectCandidate').value });
+    $('pat').value = '';
+    if (result) {
+      homebridge.toast.success('redirect 를 바꿨습니다 / Redirect updated');
+    }
+  });
+
+  $('startAuth').addEventListener('click', async () => {
+    const result = await call('/auth/start');
+    if (result && result.authorizeUrl) {
+      window.open(result.authorizeUrl, '_blank', 'noopener');
+    }
+  });
+
+  $('completeAuth').addEventListener('click', async () => {
+    const result = await call('/auth/complete', { input: $('redirectInput').value });
+    $('redirectInput').value = '';
+    if (result && result.connected) {
+      homebridge.toast.success('연결했습니다. Homebridge 를 재시작하세요 / Connected. Restart Homebridge.');
+    }
+  });
+
+  $('disconnect').addEventListener('click', async () => {
+    if (confirm('저장된 토큰을 지울까요? / Delete the saved tokens?')) {
+      await call('/auth/disconnect');
+    }
+  });
+
+  await call('/status');
+  homebridge.showSchemaForm();
+})();
+</script>
