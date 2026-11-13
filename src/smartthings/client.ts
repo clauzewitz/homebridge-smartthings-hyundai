@@ -11,7 +11,7 @@ import {
 
 export const SMARTTHINGS_API_BASE_URL = 'https://api.smartthings.com/v1';
 
-/** Supplies access tokens. Implemented by the personal access token provider. */
+/** Supplies access tokens. Implemented by the OAuth token provider and the personal access token provider. */
 export interface TokenProvider {
   getAccessToken(): Promise<string>;
   /** Called once after an HTTP 401; the next `getAccessToken()` must return the new token. */
