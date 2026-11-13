@@ -31,7 +31,7 @@
             ]
           }
         ],
-        "description": "OAuth 가 기본이자 권장 방식이며 SmartThings 유료 API 플랜이 필요합니다. OAuth 는 아직 구현 중이라, 지금은 OAuth 를 선택하면 시작하지 않습니다. 그동안은 PAT 를 쓰세요. / OAuth is the default and recommended method and requires a paid SmartThings API plan. OAuth is still in progress, so the plugin does not start with OAuth selected yet; use a PAT in the meantime."
+        "description": "OAuth 가 기본이자 권장 방식이며 SmartThings 유료 API 플랜(Developer Plan)이 필요합니다. 위 'SmartThings 연결' 에서 앱을 준비하고 로그인한 뒤 Homebridge 를 재시작하세요. 아직 실제 SmartThings 로 검증하지 않았습니다. / OAuth is the default and recommended method and requires a paid SmartThings API plan (Developer Plan). Prepare the app and log in under 'SmartThings connection' above, then restart Homebridge. Not yet verified against the live SmartThings API."
       },
       "personalAccessToken": {
         "title": "개인 액세스 토큰 (PAT) / Personal access token (PAT)",

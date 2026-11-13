@@ -48,7 +48,7 @@ export function createLog(): Logging & Record<'info' | 'warn' | 'error' | 'debug
   }) as never;
 }
 
-export function createApi() {
+export function createApi(storagePath = '/tmp/hb-test') {
   const handlers = new Map<string, Array<() => void>>();
   const api = {
     hap,
@@ -59,7 +59,7 @@ export function createApi() {
     on: vi.fn((event: string, handler: () => void) => {
       handlers.set(event, [...(handlers.get(event) ?? []), handler]);
     }),
-    user: { storagePath: () => '/tmp/hb-test' },
+    user: { storagePath: () => storagePath },
   };
   return {
     api: api as unknown as API & typeof api,

@@ -1,6 +1,6 @@
 # homebridge-smartthings-hyundai
 
-> ⚠️ 개발 중입니다. 지금은 PAT 보조 모드에서만 동작합니다(OAuth 는 구현 중). / Work in progress — currently works only in supplementary PAT mode (OAuth is in progress).
+> ⚠️ 개발 중입니다. OAuth 는 구현했지만 아직 실제 SmartThings 로 검증하지 않았습니다. 실제 차량으로 확인한 것은 PAT 보조 모드뿐입니다. / Work in progress — OAuth is implemented but not yet verified against the live SmartThings API; only the supplementary PAT mode has been tried with a real vehicle.
 
 [한국어](#한국어) · [English](#english)
 
@@ -31,12 +31,17 @@
 - Homebridge 1.8 이상 또는 2.x
 - Node.js 22.12 이상, 24, 26
 - SmartThings 계정에 등록된 차량
-- SmartThings OAuth 앱(client id / secret) — 플러그인 설정 화면에서 자동으로 만들 예정입니다(구현 중).
+- SmartThings OAuth 앱(client id / secret) — 플러그인 설정 화면에서 임시 PAT 로 자동으로 만들거나, 이미 만든 앱의 값을 직접 입력합니다.
 - **SmartThings 유료 API 플랜(Developer Plan)** — SmartThings 는 2026-11-04 부터 OAuth 앱 생성·수정과 OAuth API 호출을 유료 플랜으로 바꿨고, 2026-12-15 이후에는 플랜이 없는 연동이 제한될 예정이라고 안내했습니다. 이 플러그인도 그 이후에는 플랜이 필요합니다. 가격·지원 국가·한도는 SmartThings Developer Center 에서 확인하세요.
 
 ### 인증 방식
 
-- **OAuth (기본, 권장)**: 토큰을 자동으로 갱신합니다. 유료 API 플랜이 필요합니다. 현재 구현 중이며, OAuth 를 선택하면 아직 시작하지 않습니다.
+- **OAuth (기본, 권장)**: 토큰을 자동으로 갱신합니다. 유료 API 플랜이 필요합니다. 아직 실제 SmartThings 로 검증하지 않았습니다.
+  1. Config UI X 의 플러그인 설정 화면 'SmartThings 연결' 에서 임시 PAT(앱 권한 `r:smartapps`·`w:smartapps`)를 넣고 '앱 만들기' 를 누릅니다. PAT 는 이 요청에만 쓰고 저장하지 않습니다. 403 이 나오면 계정에 Developer Plan 이 없는 것일 수 있습니다. 이미 만든 앱이 있으면 '직접 입력' 에 client id / secret 을 넣습니다.
+  2. '로그인 링크 열기' 를 눌러 SmartThings 에서 승인합니다. 브라우저가 `https://localhost/callback?...` 에서 '연결할 수 없음' 을 보여도 정상입니다. 주소창의 URL 전체를 복사해 붙여 넣고 '연결 완료' 를 누릅니다.
+  3. Homebridge 를 재시작합니다.
+  - client id / secret 과 토큰은 `config.json` 이 아니라 Homebridge 저장 폴더의 `smartthings-hyundai/` 아래 파일(권한 0600)에 저장합니다.
+  - 토큰은 만료 10분 전에 자동 갱신합니다. 갱신이 거부되면 로그와 설정 화면에 '다시 로그인 필요' 가 표시되고 차량은 '응답 없음' 이 됩니다. 설정 화면에서 다시 로그인하면 재시작 없이 다음 재탐색 때 이어서 동작합니다.
 - **개인 액세스 토큰 PAT (보조)**: 설정에서 인증 방식을 PAT 로 바꾸고 PAT 를 입력합니다.
   - 2024-12-30 이후 발급된 PAT 는 **24시간 후 만료**됩니다. 테스트용이거나 장기 PAT 를 가진 사용자용입니다.
   - PAT 는 자동 갱신할 수 없습니다. 만료되면 로그에 안내가 남고 차량이 홈 앱에서 '응답 없음'으로 표시됩니다. 새 PAT 를 입력하고 Homebridge 를 재시작하세요.
@@ -127,12 +132,17 @@ Commands (lock, climate, refresh, ping) are sent only when you operate the acces
 - Homebridge 1.8 or later, or 2.x
 - Node.js 22.12 or later, 24, or 26
 - A vehicle registered in your SmartThings account
-- A SmartThings OAuth app (client id / secret) — the plugin settings screen will create it for you (in progress).
+- A SmartThings OAuth app (client id / secret) — the plugin settings screen creates it with a temporary PAT, or you enter the values of an app you already have.
 - **A paid SmartThings API plan (Developer Plan)** — since 2026-11-04 SmartThings requires a paid plan to create or modify OAuth apps and to call the API with OAuth, and has announced that integrations without a plan will be limited after 2026-12-15. This plugin will need a plan from then on. Check pricing, supported countries and limits in the SmartThings Developer Center.
 
 ### Authorization
 
-- **OAuth (default, recommended)**: tokens are refreshed automatically. Requires a paid API plan. Work in progress; with OAuth selected the plugin does not start yet.
+- **OAuth (default, recommended)**: tokens are refreshed automatically. Requires a paid API plan. Not yet verified against the live SmartThings API.
+  1. In the plugin settings screen of Config UI X, under 'SmartThings connection', enter a temporary PAT (app scopes `r:smartapps` and `w:smartapps`) and click 'Create app'. The PAT is used for that request only and never stored. A 403 may mean the account has no Developer Plan. If you already have an app, enter its client id / secret under 'Enter an existing app'.
+  2. Click 'Open login link' and approve in SmartThings. The browser then shows a 'cannot connect' page at `https://localhost/callback?...` — that is expected. Copy the whole URL from the address bar, paste it and click 'Finish'.
+  3. Restart Homebridge.
+  - The client id / secret and the tokens are stored in files under `smartthings-hyundai/` in the Homebridge storage folder (mode 0600), not in `config.json`.
+  - Tokens are refreshed 10 minutes before they expire. If a refresh is rejected, the log and the settings screen say a new login is required and the vehicle shows 'No Response'. After logging in again from the settings screen the plugin resumes at the next rediscovery without a restart.
 - **Personal access token, PAT (supplementary)**: set the authorization method to PAT in the settings and enter your PAT.
   - PATs issued after 2024-12-30 **expire after 24 hours**. This mode is for testing or for users who have a long-lived PAT.
   - A PAT cannot be refreshed. When it expires, the log explains what happened and the vehicle shows as 'No Response' in the Home app. Enter a new PAT and restart Homebridge.

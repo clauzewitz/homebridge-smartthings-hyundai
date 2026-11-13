@@ -1,8 +1,14 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PlatformAccessory, PlatformConfig } from 'homebridge';
 
 import { CLIMATE_ON_DEBOUNCE_MS, MOMENTARY_SWITCH_RESET_MS, maskDeviceId } from '../src/accessory/vehicleAccessory.js';
+import { OAuthStore } from '../src/oauth/store.js';
+import { OAuthTokenProvider } from '../src/oauth/tokenProvider.js';
 import { SmartThingsHyundaiPlatform, type PlatformClient } from '../src/platform.js';
+import type { TokenProvider } from '../src/smartthings/client.js';
 import { SmartThingsApiError, SmartThingsUnauthorizedError } from '../src/smartthings/errors.js';
 import { COMMAND_CONFIRM_INTERVAL_MS } from '../src/smartthings/limits.js';
 import { discoverVehicles, parseVehicleStatus, VehicleCommands, type VehicleStatus } from '../src/smartthings/vehicle.js';
@@ -24,8 +30,8 @@ function mockClient(statuses: VehicleStatus[] = [EV_STATUS]) {
   return client satisfies PlatformClient;
 }
 
-async function launch(config: PlatformConfig = patConfig(), client = mockClient(), cached: FakePlatformAccessory[] = []) {
-  const { api, emit } = createApi();
+async function launch(config: PlatformConfig = patConfig(), client = mockClient(), cached: FakePlatformAccessory[] = [], storagePath?: string) {
+  const { api, emit } = createApi(storagePath);
   const log = createLog();
   const platform = new SmartThingsHyundaiPlatform(log, config, api, { createClient: () => client });
   for (const accessory of cached) {
@@ -59,13 +65,48 @@ afterEach(() => {
 });
 
 describe('startup and authorization', () => {
-  it('does not start in OAuth mode (not implemented yet)', async () => {
-    const client = mockClient();
-    const { api, log } = await launch({ platform: 'SmartThingsHyundai' }, client);
+  it('does not start in OAuth mode before the settings screen connected', async () => {
+    const storagePath = await mkdtemp(join(tmpdir(), 'hb-st-platform-'));
+    try {
+      const client = mockClient();
+      const { api, log } = await launch({ platform: 'SmartThingsHyundai' }, client, [], storagePath);
+      await vi.waitFor(() => expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('OAuth')));
 
-    expect(client.listVehicles).not.toHaveBeenCalled();
-    expect(api.registerPlatformAccessories).not.toHaveBeenCalled();
-    expect(log.warn).toHaveBeenCalledWith(expect.stringContaining('OAuth'));
+      expect(client.listVehicles).not.toHaveBeenCalled();
+      expect(api.registerPlatformAccessories).not.toHaveBeenCalled();
+    } finally {
+      await rm(storagePath, { recursive: true, force: true });
+    }
+  });
+
+  it('starts in OAuth mode with the saved app and tokens', async () => {
+    const storagePath = await mkdtemp(join(tmpdir(), 'hb-st-platform-'));
+    try {
+      const store = new OAuthStore(storagePath);
+      await store.saveApp({
+        clientId: 'cid', clientSecret: 'secret', redirectUri: 'https://localhost/callback', scopes: [], source: 'manual', createdAt: '2026-11-13T00:00:00.000Z',
+      });
+      await store.saveTokens({ accessToken: 'oauth-at', refreshToken: 'oauth-rt', expiresAt: Date.now() + 24 * 3_600_000 });
+      const client = mockClient();
+      let tokens: TokenProvider | undefined;
+      const { api, emit } = createApi(storagePath);
+      const log = createLog();
+      const platform = new SmartThingsHyundaiPlatform(log, { platform: 'SmartThingsHyundai' }, api, {
+        createClient: (provided) => {
+          tokens = provided;
+          return client;
+        },
+      });
+      emit('didFinishLaunching');
+      await vi.waitFor(() => expect(client.listVehicles).toHaveBeenCalled());
+      platform.stop();
+
+      expect(tokens).toBeInstanceOf(OAuthTokenProvider);
+      expect(await tokens?.getAccessToken()).toBe('oauth-at');
+      expect(api.registerPlatformAccessories).toHaveBeenCalledTimes(1);
+    } finally {
+      await rm(storagePath, { recursive: true, force: true });
+    }
   });
 
   it('does not start in PAT mode without a token', async () => {

@@ -2,6 +2,8 @@ import type { API, DynamicPlatformPlugin, Logging, PlatformAccessory, PlatformCo
 
 import { VehicleAccessory, type VehicleAccessoryContext, type VehicleApi } from './accessory/vehicleAccessory.js';
 import { PatTokenProvider } from './auth/pat.js';
+import { OAuthStore } from './oauth/store.js';
+import { OAuthTokenProvider } from './oauth/tokenProvider.js';
 import { createPollingStatusSource } from './status/pollingStatusSource.js';
 import { parseOptions, readPersonalAccessToken, type PluginOptions } from './config.js';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings.js';
@@ -24,8 +26,8 @@ function errorMessage(error: unknown): string {
 /**
  * Dynamic platform for SmartThings vehicles: one PlatformAccessory per vehicle, UUID from the SmartThings device id.
  *
- * Authorization: PAT mode works now; OAuth (default) is not implemented yet, so in OAuth mode nothing starts.
- * Missing settings or tokens only produce log messages. Nothing here may throw into Homebridge.
+ * Authorization: OAuth (default) uses the app and tokens the settings screen saved under the Homebridge storage path;
+ * PAT is a supplementary mode. Missing settings or tokens only produce log messages. Nothing here may throw into Homebridge.
  */
 export class SmartThingsHyundaiPlatform implements DynamicPlatformPlugin {
   public readonly accessories: Map<string, PlatformAccessory<VehicleAccessoryContext>> = new Map();
@@ -67,32 +69,54 @@ export class SmartThingsHyundaiPlatform implements DynamicPlatformPlugin {
   }
 
   private async start(): Promise<void> {
-    if (this.options.authMethod !== 'pat') {
-      this.log.warn(
-        'SmartThings OAuth 인증은 아직 구현되지 않아 시작하지 않습니다. 지금은 설정에서 인증 방식을 PAT 로 바꿔 사용할 수 있습니다. / ' +
-        'SmartThings OAuth authorization is not implemented yet; not starting. For now you can switch the authorization method to PAT.',
-      );
+    const tokens = this.options.authMethod === 'pat' ? this.createPatTokens() : await this.createOAuthTokens();
+    if (!tokens) {
       return;
     }
+    this.client = this.dependencies.createClient?.(tokens) ?? new SmartThingsClient({
+      tokens,
+      log: { debug: (message) => this.log.debug(message), warn: (message) => this.log.warn(message) },
+    });
+    await this.discover();
+  }
+
+  private createPatTokens(): TokenProvider | undefined {
     const token = readPersonalAccessToken(this.config);
     if (!token) {
       this.log.warn(
         'PAT 인증 방식이 선택됐지만 PAT 가 입력되지 않아 시작하지 않습니다. / ' +
         'PAT authorization is selected but no PAT is configured; not starting.',
       );
-      return;
+      return undefined;
     }
     this.log.warn(
       'PAT 보조 모드입니다. 2024-12-30 이후 발급된 PAT 는 24시간 후 만료되며 자동 갱신되지 않습니다. / ' +
       'Running in supplementary PAT mode. PATs issued after 2024-12-30 expire after 24 hours and cannot be refreshed.',
     );
+    return new PatTokenProvider(token, { warn: (message) => this.log.warn(message) });
+  }
 
-    const tokens = new PatTokenProvider(token, { warn: (message) => this.log.warn(message) });
-    this.client = this.dependencies.createClient?.(tokens) ?? new SmartThingsClient({
-      tokens,
-      log: { debug: (message) => this.log.debug(message), warn: (message) => this.log.warn(message) },
+  /**
+   * Without a saved app or tokens nothing starts (a restart is needed after connecting).
+   * Tokens that need a new login still start: the token provider logs it, requests fail, accessories show
+   * 'No Response', and a new login from the settings screen is picked up by the next rediscovery.
+   */
+  private async createOAuthTokens(): Promise<TokenProvider | undefined> {
+    const store = new OAuthStore(this.api.user.storagePath());
+    const app = await store.loadApp();
+    const saved = app ? await store.loadTokens() : undefined;
+    if (!app || !saved) {
+      this.log.warn(
+        'SmartThings OAuth 연결 전이라 시작하지 않습니다. 플러그인 설정 화면에서 앱을 준비하고 로그인한 뒤 Homebridge 를 재시작하세요. / ' +
+        'SmartThings OAuth is not connected yet; not starting. Prepare the app and log in from the plugin settings screen, then restart Homebridge.',
+      );
+      return undefined;
+    }
+    return new OAuthTokenProvider({
+      store,
+      credentials: { clientId: app.clientId, clientSecret: app.clientSecret },
+      log: { debug: (message) => this.log.debug(message), warn: (message) => this.log.warn(message), error: (message) => this.log.error(message) },
     });
-    await this.discover();
   }
 
   private async discover(): Promise<void> {
