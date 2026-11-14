@@ -416,22 +416,32 @@ describe('commands', () => {
 
   const infoLines = (log: { info: { mock: { calls: unknown[][] } } }) => log.info.mock.calls.map((call) => String(call[0]));
 
-  it('logs once that the refresh is complete when newer data arrives, with the data time', async () => {
-    const newer = { ...EV_STATUS, lastUpdated: new Date('2026-11-10T00:05:00.000Z') };
-    const { accessory, log, platform } = await launch(patConfig(), mockClient([EV_STATUS, newer]));
+  it('logs once that the refresh is complete when newer data arrives, with the data time in local time', async () => {
+    const originalTz = process.env.TZ;
+    process.env.TZ = 'Asia/Seoul';
+    try {
+      const newer = { ...EV_STATUS, lastUpdated: new Date('2026-11-10T00:05:00.000Z') };
+      const { accessory, log, platform } = await launch(patConfig(), mockClient([EV_STATUS, newer]));
 
-    await service(accessory, S.Switch, 'refresh').getCharacteristic(C.On).handleSetRequest(true);
-    await vi.advanceTimersByTimeAsync(0);
-    await vi.advanceTimersByTimeAsync(10_000);
-    await vi.advanceTimersByTimeAsync(120_000);
-    platform.stop();
+      await service(accessory, S.Switch, 'refresh').getCharacteristic(C.On).handleSetRequest(true);
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(10_000);
+      await vi.advanceTimersByTimeAsync(120_000);
+      platform.stop();
 
-    const lines = infoLines(log);
-    expect(lines.filter((line) => line.includes('Refresh accepted'))).toHaveLength(1);
-    expect(lines.filter((line) => line.includes('Refresh complete'))).toEqual([
-      '[EV Vehicle] 새로고침 완료 — 데이터 시각 2026-11-10T00:05:00.000Z / Refresh complete — data as of 2026-11-10T00:05:00.000Z',
-    ]);
-    expect(lines.some((line) => line.includes('No newer data'))).toBe(false);
+      const lines = infoLines(log);
+      expect(lines.filter((line) => line.includes('Refresh accepted'))).toHaveLength(1);
+      expect(lines.filter((line) => line.includes('Refresh complete'))).toEqual([
+        '[EV Vehicle] 새로고침 완료 — 데이터 시각 2026-11-10 09:05:00 (+09:00) / Refresh complete — data as of 2026-11-10 09:05:00 (+09:00)',
+      ]);
+      expect(lines.some((line) => line.includes('No newer data'))).toBe(false);
+    } finally {
+      if (originalTz === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = originalTz;
+      }
+    }
   });
 
   it('keeps the existing message when no newer data arrives within 60 seconds', async () => {

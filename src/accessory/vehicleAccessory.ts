@@ -19,6 +19,7 @@ import {
 } from '../smartthings/vehicle.js';
 import type { StatusSource, StatusSourceFactory } from '../status/statusSource.js';
 import { defaultServiceNames, POSITIONS, SERVICE_NAMES, serviceName, serviceNamePrefix, withPrefix } from './serviceNames.js';
+import { formatLocalTime } from '../util/localTime.js';
 
 /** The subset of SmartThingsClient the accessory and its status source need; a mock in tests. */
 export interface VehicleApi {
@@ -392,7 +393,7 @@ export class VehicleAccessory {
       this.log.info(this.prefix('SmartThings 연결이 복구됐습니다. / SmartThings connection restored.'));
     }
     this.failed = false;
-    this.log.debug(this.prefix(`상태 갱신 / Status updated (lastUpdated ${status.lastUpdated?.toISOString() ?? '-'})`));
+    this.log.debug(this.prefix(`상태 갱신 / Status updated (lastUpdated ${status.lastUpdated ? formatLocalTime(status.lastUpdated) : '-'})`));
     this.applyStatus(status);
   }
 
@@ -623,7 +624,7 @@ export class VehicleAccessory {
       (status) => (status.lastUpdated?.getTime() ?? 0) > before,
       () => this.log.info(this.prefix('새로고침 후 새 데이터가 아직 없습니다. / No newer data after refresh yet.')),
       (status) => {
-        const asOf = status.lastUpdated?.toISOString() ?? '-';
+        const asOf = status.lastUpdated ? formatLocalTime(status.lastUpdated) : '-';
         this.log.info(this.prefix(`새로고침 완료 — 데이터 시각 ${asOf} / Refresh complete — data as of ${asOf}`));
       },
     );
