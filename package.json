@@ -7,6 +7,14 @@
   "description": "Homebridge plugin for Hyundai, Genesis and Kia vehicles registered in SmartThings (Korea).",
   "author": "clauzewitz",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/clauzewitz/homebridge-smartthings-hyundai.git"
+  },
+  "homepage": "https://github.com/clauzewitz/homebridge-smartthings-hyundai#readme",
+  "bugs": {
+    "url": "https://github.com/clauzewitz/homebridge-smartthings-hyundai/issues"
+  },
   "keywords": [
     "homebridge-plugin",
     "supports-hap",
