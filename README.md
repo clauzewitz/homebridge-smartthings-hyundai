@@ -70,7 +70,7 @@
 Node.js 가 설치된 PC 에서:
 
 ```bash
-git clone <이 저장소 URL>
+git clone https://github.com/clauzewitz/homebridge-smartthings-hyundai.git
 cd homebridge-smartthings-hyundai
 npm install
 npm run build
@@ -323,7 +323,7 @@ This plugin is not published to npm. Build a package file (.tgz) from the reposi
 On a computer with Node.js:
 
 ```bash
-git clone <this repository URL>
+git clone https://github.com/clauzewitz/homebridge-smartthings-hyundai.git
 cd homebridge-smartthings-hyundai
 npm install
 npm run build
