@@ -471,25 +471,27 @@ describe('polling', () => {
   });
 });
 
-describe('service name language', () => {
+describe('service names', () => {
   const names = (accessory: FakePlatformAccessory | undefined) => Object.fromEntries((accessory?.services ?? [])
     .filter((item) => item.subtype)
     .map((item) => [item.subtype, [item.getCharacteristic(C.Name).value, item.getCharacteristic(C.ConfiguredName).value]]));
+  const both = (name: string) => [name, name];
 
-  it('uses Korean names by default (Name and ConfiguredName)', async () => {
+  it('puts the vehicle name in front of every Korean name by default (Name and ConfiguredName)', async () => {
     const { accessory, platform } = await launch();
     platform.stop();
 
     expect(names(accessory)).toEqual({
-      lock: ['잠금', '잠금'],
-      climate: ['공조', '공조'],
-      battery: ['배터리', '배터리'],
-      doors: ['도어', '도어'],
-      windows: ['창문', '창문'],
-      warnings: ['차량 경고', '차량 경고'],
-      refresh: ['상태 새로고침', '상태 새로고침'],
-      ping: ['연결 확인', '연결 확인'],
+      lock: both('EV Vehicle 잠금'),
+      climate: both('EV Vehicle 공조'),
+      battery: both('EV Vehicle 배터리'),
+      doors: both('EV Vehicle 도어'),
+      windows: both('EV Vehicle 창문'),
+      warnings: both('EV Vehicle 차량 경고'),
+      refresh: both('EV Vehicle 상태 새로고침'),
+      ping: both('EV Vehicle 연결 확인'),
     });
+    expect(accessory?.context.serviceNamePrefix).toBe('EV Vehicle');
   });
 
   it('uses English names, including individual sensors, the climate switch, cabin temperature and range', async () => {
@@ -502,19 +504,32 @@ describe('service name language', () => {
     platform.stop();
 
     const result = names(accessory);
-    expect(result['climate-switch']).toEqual(['Climate', 'Climate']);
-    expect(result['cabin-temperature']).toEqual(['Cabin Temperature', 'Cabin Temperature']);
-    expect(result.range).toEqual(['Range', 'Range']);
-    expect(result['door-front-left']).toEqual(['Front Left Door', 'Front Left Door']);
-    expect(result['window-rear-right']).toEqual(['Rear Right Window', 'Rear Right Window']);
-    expect(result.lock).toEqual(['Lock', 'Lock']);
+    expect(result['climate-switch']).toEqual(both('EV Vehicle Climate'));
+    expect(result['cabin-temperature']).toEqual(both('EV Vehicle Cabin Temperature'));
+    expect(result.range).toEqual(both('EV Vehicle Range'));
+    expect(result['door-front-left']).toEqual(both('EV Vehicle Front Left Door'));
+    expect(result['window-rear-right']).toEqual(both('EV Vehicle Rear Right Window'));
+    expect(result.lock).toEqual(both('EV Vehicle Lock'));
   });
 
-  it('names the engine sensor in the configured language', async () => {
-    const { accessory, platform } = await launch(patConfig({ serviceNameLanguage: 'en' }), mockClient([parseVehicleStatus(ICE_STATUS)]));
+  it('names the engine sensor in the configured language, without the prefix when it is off', async () => {
+    const { accessory, platform } = await launch(
+      patConfig({ serviceNameLanguage: 'en', prefixServiceNames: false }),
+      mockClient([parseVehicleStatus(ICE_STATUS)]),
+    );
     platform.stop();
 
-    expect(names(accessory).engine).toEqual(['Engine', 'Engine']);
+    expect(names(accessory).engine).toEqual(both('Engine'));
+    expect(names(accessory).lock).toEqual(both('Lock'));
+  });
+
+  it('cleans the SmartThings label before using it as the prefix', async () => {
+    const client = mockClient();
+    client.listVehicles.mockResolvedValue([{ ...EV_VEHICLE, label: '🚗 [우리] 차!' }]);
+    const { accessory, platform } = await launch(patConfig(), client);
+    platform.stop();
+
+    expect(names(accessory).doors).toEqual(both('우리 차 도어'));
   });
 
   it('on a language change keeps names the user set in the Home app and updates the default ones', async () => {
@@ -527,20 +542,68 @@ describe('service name language', () => {
     second.platform.stop();
 
     const result = names(second.accessory);
-    expect(result.lock).toEqual(['Lock', '내 차 잠금']);
-    expect(result.doors).toEqual(['Doors', 'Doors']);
-    expect(result.battery).toEqual(['Battery', 'Battery']);
+    expect(result.lock).toEqual(['EV Vehicle Lock', '내 차 잠금']);
+    expect(result.doors).toEqual(both('EV Vehicle Doors'));
+    expect(result.battery).toEqual(both('EV Vehicle Battery'));
   });
 
-  it('migrates the earlier bilingual default names', async () => {
+  it('adds the prefix to names cached by an earlier version and to the earlier bilingual form', async () => {
     const cached = new FakePlatformAccessory('EV Vehicle', hap.uuid.generate('ev-device-id'));
     const lock = cached.addService(S.LockMechanism, '잠금 Lock', 'lock');
     lock.addOptionalCharacteristic(C.ConfiguredName);
     lock.setCharacteristic(C.ConfiguredName, '잠금 Lock');
+    const doors = cached.addService(S.ContactSensor, '도어', 'doors');
+    doors.addOptionalCharacteristic(C.ConfiguredName);
+    doors.setCharacteristic(C.ConfiguredName, '도어');
+    const windows = cached.addService(S.ContactSensor, '창문', 'windows');
+    windows.addOptionalCharacteristic(C.ConfiguredName);
+    windows.setCharacteristic(C.ConfiguredName, '차 창문');
 
     const { accessory, platform } = await launch(patConfig(), mockClient(), [cached]);
     platform.stop();
 
-    expect(names(accessory).lock).toEqual(['잠금', '잠금']);
+    expect(names(accessory).lock).toEqual(both('EV Vehicle 잠금'));
+    expect(names(accessory).doors).toEqual(both('EV Vehicle 도어'));
+    expect(names(accessory).windows).toEqual(['EV Vehicle 창문', '차 창문']);
+  });
+
+  it('renames default names when the SmartThings label changes, keeping names set by the user', async () => {
+    const { accessory, platform } = await launch();
+    accessory?.getServiceById(S.LockMechanism as never, 'lock')?.getCharacteristic(C.ConfiguredName).updateValue('내 차 잠금');
+
+    platform.vehicles.get(accessory!.UUID)?.updateDevice({ ...EV_VEHICLE, label: 'Family Car' });
+    platform.stop();
+
+    expect(names(accessory).doors).toEqual(both('Family Car 도어'));
+    expect(names(accessory).lock).toEqual(['Family Car 잠금', '내 차 잠금']);
+    expect(accessory?.context.serviceNamePrefix).toBe('Family Car');
+  });
+
+  it('recognises names with the prefix used before a restart', async () => {
+    const cached = new FakePlatformAccessory('Old Car', hap.uuid.generate('ev-device-id'));
+    cached.context.device = { ...EV_VEHICLE, label: 'Old Car' };
+    cached.context.serviceNamePrefix = 'Old Car';
+    const doors = cached.addService(S.ContactSensor, 'Old Car 도어', 'doors');
+    doors.addOptionalCharacteristic(C.ConfiguredName);
+    doors.setCharacteristic(C.ConfiguredName, 'Old Car 도어');
+
+    const { accessory, platform } = await launch(patConfig(), mockClient(), [cached]);
+    platform.stop();
+
+    expect(names(accessory).doors).toEqual(both('EV Vehicle 도어'));
+  });
+
+  it('removes the prefix from default names when the option is turned off', async () => {
+    const first = await launch();
+    first.platform.stop();
+    const cached = first.accessory;
+    cached?.getServiceById(S.ContactSensor as never, 'windows')?.getCharacteristic(C.ConfiguredName).updateValue('차 창문');
+
+    const second = await launch(patConfig({ prefixServiceNames: false }), mockClient(), cached ? [cached] : []);
+    second.platform.stop();
+
+    expect(names(second.accessory).doors).toEqual(both('도어'));
+    expect(names(second.accessory).windows).toEqual(['창문', '차 창문']);
+    expect(second.accessory?.context.serviceNamePrefix).toBe('');
   });
 });

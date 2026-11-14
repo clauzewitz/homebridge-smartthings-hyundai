@@ -33,6 +33,8 @@ export interface PluginOptions {
   exposeRangeAsLightSensor: boolean;
   /** Language of the HomeKit service names (`ko` default, or `en`). Logs and settings stay bilingual. */
   serviceNameLanguage: ServiceNameLanguage;
+  /** Put the vehicle name (SmartThings label) in front of every service name, e.g. '{vehicle} 도어'. Default on. */
+  prefixServiceNames: boolean;
 }
 
 function bool(value: unknown, fallback: boolean): boolean {
@@ -82,6 +84,7 @@ export function parseOptions(config: PlatformConfig, warn?: (message: string) =>
     climateDefog: bool(config.climateDefog, false),
     exposeRangeAsLightSensor: bool(config.exposeRangeAsLightSensor, false),
     serviceNameLanguage: validLanguage ? language as ServiceNameLanguage : DEFAULT_SERVICE_NAME_LANGUAGE,
+    prefixServiceNames: bool(config.prefixServiceNames, true),
   };
 }
 

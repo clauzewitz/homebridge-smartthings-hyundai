@@ -19,7 +19,13 @@ describe('parseOptions', () => {
       climateDefog: false,
       exposeRangeAsLightSensor: false,
       serviceNameLanguage: 'ko',
+      prefixServiceNames: true,
     });
+  });
+
+  it('turns the vehicle-name prefix off only for an explicit false', () => {
+    expect(parseOptions({ ...base, prefixServiceNames: false }).prefixServiceNames).toBe(false);
+    expect(parseOptions({ ...base, prefixServiceNames: 'no' }).prefixServiceNames).toBe(true);
   });
 
   it('clamps numeric options to their allowed ranges', () => {

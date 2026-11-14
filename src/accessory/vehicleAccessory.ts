@@ -18,7 +18,7 @@ import {
   type VehicleStatus,
 } from '../smartthings/vehicle.js';
 import type { StatusSource, StatusSourceFactory } from '../status/statusSource.js';
-import { defaultServiceNames, POSITIONS, serviceName } from './serviceNames.js';
+import { defaultServiceNames, POSITIONS, SERVICE_NAMES, serviceName, serviceNamePrefix, withPrefix } from './serviceNames.js';
 
 /** The subset of SmartThingsClient the accessory and its status source need; a mock in tests. */
 export interface VehicleApi {
@@ -30,6 +30,8 @@ export interface VehicleAccessoryContext {
   device: VehicleDevice;
   /** HeaterCooler target temperature in °C, kept across restarts. */
   targetTemperature?: number;
+  /** Vehicle-name prefix last put in front of the default service names ('' when none). */
+  serviceNamePrefix?: string;
 }
 
 /** Battery level at or below this is reported as low. */
@@ -95,6 +97,9 @@ export class VehicleAccessory {
   private pendingClimateOn?: boolean;
   private lastWarnings = '';
   private lastDistanceLog = '';
+  /** Prefix for the service names now, and the one used before (so its names are still recognised as defaults). */
+  private namePrefix = '';
+  private previousNamePrefix = '';
 
   constructor(
     private readonly api: API,
@@ -110,7 +115,14 @@ export class VehicleAccessory {
       sink: { onStatus: (status) => this.handleStatus(status), onReadFailure: (error) => this.handleReadFailure(error) },
       log: { debug: (message) => this.log.debug(this.prefix(message)), warn: (message) => this.log.warn(this.prefix(message)) },
     });
+    this.previousNamePrefix = this.accessory.context.serviceNamePrefix ?? '';
+    this.namePrefix = this.currentNamePrefix();
+    this.accessory.context.serviceNamePrefix = this.namePrefix;
     this.setupConfigServices();
+  }
+
+  private currentNamePrefix(): string {
+    return this.options.prefixServiceNames ? serviceNamePrefix(this.device.label) : '';
   }
 
   private get device(): VehicleDevice {
@@ -136,6 +148,17 @@ export class VehicleAccessory {
   updateDevice(device: VehicleDevice): void {
     this.accessory.context.device = device;
     this.updateInformation();
+    const prefix = this.currentNamePrefix();
+    if (prefix !== this.namePrefix) {
+      this.previousNamePrefix = this.namePrefix;
+      this.namePrefix = prefix;
+      this.accessory.context.serviceNamePrefix = prefix;
+      for (const service of this.accessory.services) {
+        if (service.subtype && SERVICE_NAMES[service.subtype]) {
+          this.applyName(service, service.subtype);
+        }
+      }
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -212,35 +235,39 @@ export class VehicleAccessory {
       .setCharacteristic(Characteristic.SerialNumber, maskDeviceId(this.device.deviceId));
   }
 
-  /**
-   * Get or add a service named in the configured language (`serviceNameLanguage`).
-   *
-   * For a service restored from cache, `Name` (read-only for HomeKit controllers) is always updated, but
-   * `ConfiguredName` (writable by the Home app, kept in the accessory cache) is only replaced while it still
-   * holds one of our default names, so a name the user set in the Home app is never overwritten.
-   * The Home app may still show the name it stored when the accessory was paired.
-   */
+  /** Get or add a service, named by applyName(). */
   private ensureService(type: ServiceType, subtype: string): Service {
-    const { Characteristic } = this.hap;
-    const name = serviceName(subtype, this.options.serviceNameLanguage);
-    const existing = this.accessory.getServiceById(type, subtype);
-    if (existing) {
-      existing.getCharacteristic(Characteristic.Name).updateValue(name);
-      if (!existing.testCharacteristic(Characteristic.ConfiguredName)) {
-        existing.addOptionalCharacteristic(Characteristic.ConfiguredName);
-        existing.setCharacteristic(Characteristic.ConfiguredName, name);
-        return existing;
-      }
-      const configured = existing.getCharacteristic(Characteristic.ConfiguredName);
-      if (typeof configured.value !== 'string' || configured.value === '' || defaultServiceNames(subtype).has(configured.value)) {
-        configured.updateValue(name);
-      }
-      return existing;
-    }
-    const service = this.accessory.addService(type, name, subtype);
-    service.addOptionalCharacteristic(Characteristic.ConfiguredName);
-    service.setCharacteristic(Characteristic.ConfiguredName, name);
+    const service = this.accessory.getServiceById(type, subtype)
+      ?? this.accessory.addService(type, this.defaultName(subtype), subtype);
+    this.applyName(service, subtype);
     return service;
+  }
+
+  /** '{vehicle} {name}' in the configured language, or just the name when the prefix is off or empty. */
+  private defaultName(subtype: string): string {
+    return withPrefix(this.namePrefix, serviceName(subtype, this.options.serviceNameLanguage));
+  }
+
+  /**
+   * `Name` (read-only for HomeKit controllers) always gets the default name. `ConfiguredName` (writable by the
+   * Home app, kept in the accessory cache) is only replaced while it still holds one of our default names —
+   * either language, with the current or the previous vehicle-name prefix, or none — so a name the user set in
+   * the Home app is never overwritten. The Home app may still show the name it stored when the accessory was paired.
+   */
+  private applyName(service: Service, subtype: string): void {
+    const { Characteristic } = this.hap;
+    const name = this.defaultName(subtype);
+    service.getCharacteristic(Characteristic.Name).updateValue(name);
+    if (!service.testCharacteristic(Characteristic.ConfiguredName)) {
+      service.addOptionalCharacteristic(Characteristic.ConfiguredName);
+      service.setCharacteristic(Characteristic.ConfiguredName, name);
+      return;
+    }
+    const configured = service.getCharacteristic(Characteristic.ConfiguredName);
+    const defaults = defaultServiceNames(subtype, [this.namePrefix, this.previousNamePrefix]);
+    if (typeof configured.value !== 'string' || configured.value === '' || defaults.has(configured.value)) {
+      configured.updateValue(name);
+    }
   }
 
   /** Bind a getter that serves the cached status, or reports "No Response" when there is none. */

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { defaultServiceNames, SERVICE_NAMES, serviceName } from '../src/accessory/serviceNames.js';
+import {
+  defaultServiceNames,
+  MAX_SERVICE_NAME_LENGTH,
+  SERVICE_NAMES,
+  serviceName,
+  serviceNamePrefix,
+  withPrefix,
+} from '../src/accessory/serviceNames.js';
 
 // Same rule as HAP-NodeJS checkName (node_modules/@homebridge/hap-nodejs/dist/lib/util/checkName.js).
 const HAP_NAME = /^[\p{L}\p{N}](?:[\p{L}\p{N}\p{Zs}’'&!._:;()/,-]*[\p{L}\p{N}])?$/u;
@@ -50,5 +57,52 @@ describe('service names', () => {
 
   it('throws for an unknown subtype', () => {
     expect(() => serviceName('nope', 'ko')).toThrow();
+  });
+});
+
+describe('vehicle-name prefix', () => {
+  it('cleans the SmartThings label for HomeKit', () => {
+    expect(serviceNamePrefix('My EV')).toBe('My EV');
+    expect(serviceNamePrefix('  내 차  ')).toBe('내 차');
+    expect(serviceNamePrefix('🚗 [Family] Car! 🔋')).toBe('Family Car');
+    expect(serviceNamePrefix('Car\t#1\n')).toBe('Car 1');
+    expect(serviceNamePrefix('Kim\'s (EV), 2')).toBe('Kim\'s (EV), 2');
+    expect(serviceNamePrefix('🚗 ***')).toBe('');
+    expect(serviceNamePrefix('')).toBe('');
+    expect(serviceNamePrefix(undefined)).toBe('');
+  });
+
+  it('puts the prefix in front and shortens only the prefix to 64 characters', () => {
+    expect(withPrefix('내 차', '도어')).toBe('내 차 도어');
+    expect(withPrefix('', '도어')).toBe('도어');
+
+    const long = withPrefix('A'.repeat(70), 'Front Left Window');
+    expect(long).toHaveLength(MAX_SERVICE_NAME_LENGTH);
+    expect(long.endsWith(' Front Left Window')).toBe(true);
+
+    // A cut that would end on a symbol is trimmed back to a letter or number.
+    expect(withPrefix(`${'B'.repeat(56)} -${'C'.repeat(10)}`, 'Range')).toBe(`${'B'.repeat(56)} Range`);
+    expect(withPrefix('X'.repeat(80), 'N'.repeat(64))).toBe('N'.repeat(64));
+  });
+
+  it('keeps every prefixed default name within the HAP naming rule and length, in both languages', () => {
+    const prefixes = ['내 차', 'My EV', serviceNamePrefix('🚗 [Family] Car! 🔋'), serviceNamePrefix(`${'가'.repeat(80)}!`)];
+    for (const prefix of prefixes) {
+      for (const subtype of Object.keys(SERVICE_NAMES)) {
+        for (const language of ['ko', 'en'] as const) {
+          const name = withPrefix(prefix, serviceName(subtype, language));
+          expect(name).toMatch(HAP_NAME);
+          expect(name.length).toBeLessThanOrEqual(MAX_SERVICE_NAME_LENGTH);
+        }
+      }
+    }
+  });
+
+  it('treats prefixed default names as defaults for the given prefixes only', () => {
+    const names = defaultServiceNames('doors', ['내 차', 'Old Car', '']);
+    expect(names.has('내 차 도어')).toBe(true);
+    expect(names.has('Old Car Doors')).toBe(true);
+    expect(names.has('도어')).toBe(true);
+    expect(names.has('Other Car 도어')).toBe(false);
   });
 });

@@ -215,6 +215,14 @@ accessory 의 UUID 는 SmartThings 디바이스 ID 로 만들어지므로 재시
 - **페어링 전에 정하세요.** 홈 앱은 페어링할 때의 이름을 계속 쓸 수 있습니다.
 - 추가한 뒤 언어를 바꾸면 플러그인은 기본 이름만 바꾸고, 홈 앱에서 직접 바꾼 이름은 건드리지 않습니다.
 
+#### 서비스 이름 앞의 차량 이름
+
+어느 차량의 타일인지 알 수 있도록, 서비스 이름 앞에 SmartThings 의 차량 이름을 붙입니다(예: `{차량 이름} 도어`). Siri 에게도 '{차량 이름} 도어 열려 있어?' 처럼 물을 수 있습니다. `prefixServiceNames` 를 끄면 예전처럼 '도어' 만 씁니다.
+
+- 차량 이름은 SmartThings 앱의 이름을 씁니다. 홈 앱에서 쓸 수 없는 문자(이모지, 대괄호 등)는 빼고, 이름 전체가 64자를 넘으면 차량 이름 쪽을 줄입니다. SmartThings 에서 차량 이름을 바꾸면 기본 이름도 따라 바뀝니다.
+- 홈 앱에서 직접 바꾼 이름은 건드리지 않습니다.
+- 아직 실제 기기에서 확인하지 않았습니다. 홈 앱이 이름 앞의 차량 이름(또는 방 이름과 같은 앞 단어)을 숨기거나, 이미 페어링한 accessory 에는 바뀐 이름이 바로 보이지 않을 수 있습니다. 그럴 때는 홈 앱에서 이름을 바꾸거나 기기를 다시 추가하세요.
+
 #### Siri 집 전체 명령 주의
 
 Siri 는 '에어컨 다 켜줘' 처럼 서비스 종류 단위로 명령을 묶습니다. 차량을 다른 방에 두어도 집 전체 명령에서는 빠지지 않아, 집 에어컨을 켜다가 차량 원격 공조(시동 포함)가 함께 켜질 수 있습니다. 이를 막으려면 **'공조를 스위치로 등록'**(`climateAsSwitch`)을 켜세요.
@@ -236,6 +244,7 @@ Siri 는 '에어컨 다 켜줘' 처럼 서비스 종류 단위로 명령을 묶�
 | `exposeRangeAsLightSensor` | 주행 가능 거리를 조도 센서(lux = km)로 표시 | `false` |
 | `individualDoorWindowSensors` | 도어 4개·창문 4개를 각각 센서로 표시 | `false` |
 | `serviceNameLanguage` | 홈 앱 서비스 이름 언어: `ko` 또는 `en`. 지원하지 않는 값은 `ko` 로 쓰고 로그에 알립니다 | `ko` |
+| `prefixServiceNames` | 서비스 이름 앞에 차량 이름 붙이기(예: `{차량 이름} 도어`) | `true` |
 
 OAuth 의 client id·secret 과 토큰은 설정 항목이 아니라 설정 화면에서 관리합니다([토큰과 client 정보](#토큰과-client-정보)).
 
@@ -466,6 +475,14 @@ The service names shown in the Home app (Lock, Climate, Doors, ...) are Korean (
 - **Choose before pairing.** The Home app may keep the names it stored when the accessory was paired.
 - If you change the language after adding the accessory, the plugin switches only the default names and never touches names you changed in the Home app.
 
+#### Vehicle name in front of service names
+
+So that you can tell which vehicle a tile belongs to, the SmartThings vehicle name is put in front of every service name (for example `{vehicle name} Doors`). You can also ask Siri "Are the {vehicle name} doors open?". Turn off `prefixServiceNames` to use only "Doors" as before.
+
+- The name comes from the SmartThings app. Characters the Home app does not accept (emoji, square brackets, ...) are dropped, and if the whole name is longer than 64 characters the vehicle name is shortened. When you rename the vehicle in SmartThings, the default names follow.
+- Names you changed in the Home app are never touched.
+- Not yet checked on a real device: the Home app may hide the vehicle name at the start of the name (or a first word that matches the room name), and an accessory that is already paired may not show the new names right away. In that case rename it in the Home app or add the accessory again.
+
 #### Home-wide Siri commands
 
 Siri groups commands by service type, such as "turn on all air conditioners". Putting the vehicle in a separate room does not exclude it from home-wide commands, so turning on the home's air conditioners can also start the vehicle's remote climate (and engine). To prevent this, enable **'Expose climate as a switch'** (`climateAsSwitch`).
@@ -487,6 +504,7 @@ Siri groups commands by service type, such as "turn on all air conditioners". Pu
 | `exposeRangeAsLightSensor` | Show driving range as a light sensor (lux = km) | `false` |
 | `individualDoorWindowSensors` | One sensor per door and per window | `false` |
 | `serviceNameLanguage` | Language of the Home app service names: `ko` or `en`. Unsupported values fall back to `ko` with a log notice | `ko` |
+| `prefixServiceNames` | Put the vehicle name in front of service names (for example `{vehicle name} Doors`) | `true` |
 
 The OAuth client id/secret and tokens are not options; they are managed in the settings screen (see [Tokens and client credentials](#tokens-and-client-credentials)).
 

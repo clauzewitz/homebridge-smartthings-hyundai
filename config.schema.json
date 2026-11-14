@@ -117,6 +117,12 @@
           }
         ],
         "description": "홈 앱에 보이는 서비스 이름(잠금, 공조 등)의 언어입니다. 로그와 설정 화면은 항상 한국어·영어로 표시합니다. 홈 앱은 페어링할 때의 이름을 계속 쓸 수 있으므로 페어링 전에 정하세요. 이미 추가했다면 홈 앱에서 이름을 바꾸거나 기기를 다시 추가하세요. / Language of the service names shown in the Home app (Lock, Climate, ...). Logs and this settings screen are always bilingual. The Home app may keep the names from pairing time, so choose before pairing; if already added, rename in the Home app or add the accessory again."
+      },
+      "prefixServiceNames": {
+        "title": "서비스 이름 앞에 차량 이름 붙이기 / Vehicle name in front of service names",
+        "type": "boolean",
+        "default": true,
+        "description": "켜면 홈 앱의 서비스 이름 앞에 SmartThings 차량 이름을 붙입니다(예: '{차량 이름} 도어'). 홈 앱에서 직접 바꾼 이름은 그대로 둡니다. 홈 앱이 이미 페어링된 기기에 바뀐 이름을 바로 보여 주지 않을 수 있습니다. / When on, the SmartThings vehicle name is put in front of the service names in the Home app (e.g. '{vehicle name} Doors'). Names you changed in the Home app are kept. The Home app may not show new names for an accessory that is already paired."
       }
     }
   }
