@@ -2,7 +2,7 @@
   "name": "homebridge-smartthings-hyundai",
   "displayName": "SmartThings Hyundai Vehicle",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Homebridge plugin for Hyundai, Genesis and Kia vehicles registered in SmartThings (Korea).",
   "author": "clauzewitz",

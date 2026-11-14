@@ -21,6 +21,7 @@
 - [설정 항목](#설정-항목)
 - [보안 안내](#보안-안내)
 - [안전 안내](#안전-안내)
+- [변경 내역](#변경-내역)
 - [라이선스](#라이선스)
 
 ### 현재 상태
@@ -260,6 +261,11 @@ OAuth 의 client id·secret 과 토큰은 설정 항목이 아니라 설정 화�
 - 잠금 해제와 원격 공조는 실제 차량 상태를 바꿉니다. 원격 공조를 켜면 작동 시간 동안 시동이 함께 걸릴 수 있습니다.
 - 필요하면 `allowUnlock`, `allowClimate` 를 꺼서 해당 동작을 막으세요.
 
+### 변경 내역
+
+- **0.1.1**: 서비스 이름 앞에 차량 이름(`prefixServiceNames`, 기본 켜짐). 설치 직후에도 설정 화면에 일반 설정 폼이 보이도록 수정하고, 연결 상태를 10초 안에 받지 못하면 안내.
+- **0.1.0**: 첫 패키지.
+
 ### 라이선스
 
 MIT. 제3자 고지는 [THIRD_PARTY_NOTICES](./THIRD_PARTY_NOTICES) 를 보세요. 이 플러그인은 [gomeng-dev/smartthings-vehicle-ha](https://github.com/gomeng-dev/smartthings-vehicle-ha)(MIT)를 참고해 만들었습니다.
@@ -281,6 +287,7 @@ A Homebridge plugin that lets you monitor and control **Hyundai, Genesis and Kia
 - [Options](#options)
 - [Security](#security)
 - [Safety](#safety)
+- [Changes](#changes)
 - [License](#license)
 
 ### Current status
@@ -519,6 +526,11 @@ The OAuth client id/secret and tokens are not options; they are managed in the s
 
 - Unlock and remote climate change the real vehicle state. Turning on remote climate may start the engine for the configured duration.
 - Turn off `allowUnlock` or `allowClimate` if you want to block those actions.
+
+### Changes
+
+- **0.1.1**: Vehicle name in front of service names (`prefixServiceNames`, on by default). The settings screen now shows the regular settings form right after installation, and says so when the connection status does not arrive within 10 seconds.
+- **0.1.0**: First package.
 
 ### License
 
