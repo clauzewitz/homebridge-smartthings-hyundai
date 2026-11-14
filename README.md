@@ -265,6 +265,7 @@ OAuth 의 client id·secret 과 토큰은 설정 항목이 아니라 설정 화�
 
 ### 변경 내역
 
+- **0.1.3**: 로그의 시각을 Homebridge 가 도는 곳의 현지 시각(UTC 와의 차이 포함)으로 표시합니다.
 - **0.1.2**: 새로고침 뒤 새 데이터가 도착하면 '새로고침 완료 — 데이터 시각 …' 로그를 남깁니다.
 - **0.1.1**: 서비스 이름 앞에 차량 이름(`prefixServiceNames`, 기본 켜짐). 설치 직후에도 설정 화면에 일반 설정 폼이 보이도록 수정하고, 연결 상태를 10초 안에 받지 못하면 안내.
 - **0.1.0**: 첫 패키지.
@@ -534,6 +535,7 @@ The OAuth client id/secret and tokens are not options; they are managed in the s
 
 ### Changes
 
+- **0.1.3**: Log times use the local time zone of the Homebridge host, with the UTC offset.
 - **0.1.2**: After a refresh, logs 'Refresh complete — data as of …' when newer data arrives.
 - **0.1.1**: Vehicle name in front of service names (`prefixServiceNames`, on by default). The settings screen now shows the regular settings form right after installation, and says so when the connection status does not arrive within 10 seconds.
 - **0.1.0**: First package.
