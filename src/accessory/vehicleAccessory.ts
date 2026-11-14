@@ -622,6 +622,10 @@ export class VehicleAccessory {
     this.source.confirm(
       (status) => (status.lastUpdated?.getTime() ?? 0) > before,
       () => this.log.info(this.prefix('새로고침 후 새 데이터가 아직 없습니다. / No newer data after refresh yet.')),
+      (status) => {
+        const asOf = status.lastUpdated?.toISOString() ?? '-';
+        this.log.info(this.prefix(`새로고침 완료 — 데이터 시각 ${asOf} / Refresh complete — data as of ${asOf}`));
+      },
     );
   }
 

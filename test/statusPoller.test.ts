@@ -102,5 +102,44 @@ describe('StatusPoller', () => {
 
     expect(isDone.mock.calls).toEqual([[3]]);
   });
-});
 
+  it('calls onDone once with the value that satisfied isDone, and not after a timeout', async () => {
+    const values = [1, 2, 3, 4];
+    const read = vi.fn(async () => values.shift());
+    const onDone = vi.fn();
+    const onTimeout = vi.fn();
+    const poller = new StatusPoller<number>({ pollIntervalMs: 60_000, read, log: log() });
+    poller.start();
+    await vi.advanceTimersByTimeAsync(0);
+
+    poller.confirm((value) => value >= 3, onTimeout, onDone);
+    await vi.advanceTimersByTimeAsync(20_000);
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(onDone.mock.calls).toEqual([[3]]);
+    expect(onTimeout).not.toHaveBeenCalled();
+
+    const timedOut = vi.fn();
+    poller.confirm(() => false, vi.fn(), timedOut);
+    await vi.advanceTimersByTimeAsync(60_000);
+    poller.stop();
+    expect(timedOut).not.toHaveBeenCalled();
+  });
+
+  it('logs an error thrown by onDone and keeps polling', async () => {
+    const read = vi.fn(async () => 1);
+    const logger = log();
+    const poller = new StatusPoller<number>({ pollIntervalMs: 60_000, read, log: logger });
+    poller.start();
+    await vi.advanceTimersByTimeAsync(0);
+
+    poller.confirm(() => true, vi.fn(), () => {
+      throw new Error('boom');
+    });
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('boom'));
+    await vi.advanceTimersByTimeAsync(60_000);
+    poller.stop();
+
+    expect(read).toHaveBeenCalledTimes(3);
+  });
+});

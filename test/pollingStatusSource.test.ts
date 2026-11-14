@@ -159,5 +159,19 @@ describe('PollingStatusSource confirmation predicate', () => {
     expect(isDone).not.toHaveBeenCalled();
     expect(target.onReadFailure).toHaveBeenCalled();
   });
-});
 
+  it('passes the status that satisfied the check to onDone', async () => {
+    const getStatus = vi.fn(async () => STATUS);
+    const onDone = vi.fn();
+    const source = new PollingStatusSource({ pollIntervalMs: 60_000, getStatus, sink: sink(), log: log() });
+    source.start();
+    await vi.advanceTimersByTimeAsync(0);
+
+    source.confirm(() => true, vi.fn(), onDone);
+    await vi.advanceTimersByTimeAsync(10_000);
+    source.stop();
+
+    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(onDone).toHaveBeenCalledWith(STATUS);
+  });
+});

@@ -413,6 +413,51 @@ describe('commands', () => {
     }
     platform.stop();
   });
+
+  const infoLines = (log: { info: { mock: { calls: unknown[][] } } }) => log.info.mock.calls.map((call) => String(call[0]));
+
+  it('logs once that the refresh is complete when newer data arrives, with the data time', async () => {
+    const newer = { ...EV_STATUS, lastUpdated: new Date('2026-11-10T00:05:00.000Z') };
+    const { accessory, log, platform } = await launch(patConfig(), mockClient([EV_STATUS, newer]));
+
+    await service(accessory, S.Switch, 'refresh').getCharacteristic(C.On).handleSetRequest(true);
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(10_000);
+    await vi.advanceTimersByTimeAsync(120_000);
+    platform.stop();
+
+    const lines = infoLines(log);
+    expect(lines.filter((line) => line.includes('Refresh accepted'))).toHaveLength(1);
+    expect(lines.filter((line) => line.includes('Refresh complete'))).toEqual([
+      '[EV Vehicle] 새로고침 완료 — 데이터 시각 2026-11-10T00:05:00.000Z / Refresh complete — data as of 2026-11-10T00:05:00.000Z',
+    ]);
+    expect(lines.some((line) => line.includes('No newer data'))).toBe(false);
+  });
+
+  it('keeps the existing message when no newer data arrives within 60 seconds', async () => {
+    const { accessory, log, platform } = await launch();
+
+    await service(accessory, S.Switch, 'refresh').getCharacteristic(C.On).handleSetRequest(true);
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(60_000);
+    platform.stop();
+
+    const lines = infoLines(log);
+    expect(lines.filter((line) => line.includes('No newer data after refresh yet'))).toHaveLength(1);
+    expect(lines.some((line) => line.includes('Refresh complete'))).toBe(false);
+  });
+
+  it('does not log a refresh completion for other commands', async () => {
+    const { accessory, client, log, platform } = await launch(patConfig(), mockClient([EV_STATUS, { ...EV_STATUS, lockState: 'unlocked' }]));
+
+    await service(accessory, S.LockMechanism, 'lock').getCharacteristic(C.LockTargetState).handleSetRequest(C.LockTargetState.UNSECURED);
+    await vi.advanceTimersByTimeAsync(0);
+    await vi.advanceTimersByTimeAsync(60_000);
+    platform.stop();
+
+    expect(client.executeCommand).toHaveBeenCalledWith('ev-device-id', VehicleCommands.unlock());
+    expect(infoLines(log).some((line) => line.includes('Refresh complete'))).toBe(false);
+  });
 });
 
 describe('polling', () => {

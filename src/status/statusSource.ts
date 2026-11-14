@@ -17,9 +17,10 @@ export interface StatusSource {
   stop(): void;
   /**
    * Called after a command is ACCEPTED: keep checking until `isDone(status)` holds for a freshly received
-   * status, or give up and call `onTimeout()`. `isDone` must judge only its argument (no cached state).
+   * status, or give up and call `onTimeout()`. `isDone` must judge only its argument (no cached state) and may
+   * be called many times; `onDone(status)`, when given, is called once with the status that satisfied it.
    */
-  confirm(isDone: (status: VehicleStatus) => boolean, onTimeout: () => void): void;
+  confirm(isDone: (status: VehicleStatus) => boolean, onTimeout: () => void, onDone?: (status: VehicleStatus) => void): void;
 }
 
 export interface StatusSourceContext {

@@ -51,6 +51,7 @@
 - 시동 단독 제어와 충전 시작·중지는 제공하지 않습니다. 주행 가능 거리·누적 주행거리는 기본으로 로그에만 남깁니다.
 - 명령(잠금·공조·새로고침·연결 확인)은 홈 앱에서 조작했을 때만 보냅니다.
 - 상태는 설정한 주기로 조회합니다. 명령을 보낸 뒤에는 10초 간격으로 최대 60초 동안 반영 여부를 확인하고, 반영되지 않으면 홈 앱 표시를 원래대로 되돌립니다.
+- 새로고침 로그: '새로고침 요청 접수 / Refresh accepted' 는 SmartThings 가 요청을 받았다는 뜻, '새로고침 완료 — 데이터 시각 … / Refresh complete — data as of …' 는 새 데이터가 도착했다는 뜻(시각은 UTC), '새로고침 후 새 데이터가 아직 없습니다 / No newer data after refresh yet' 는 60초 안에 새 데이터가 오지 않았다는 뜻입니다.
 - SmartThings 상태 조회 한도(60초에 10회)를 넘지 않도록 조절합니다.
 - 조회나 인증에 실패하면 홈 앱에서 '응답 없음'으로 표시됩니다. 플러그인이 멈추지는 않습니다.
 
@@ -317,6 +318,7 @@ A Homebridge plugin that lets you monitor and control **Hyundai, Genesis and Kia
 - Standalone engine start/stop and charging start/stop are not provided. Driving range and odometer are written to the log by default.
 - Commands (lock, climate, refresh, ping) are sent only when you operate the accessory in the Home app.
 - Status is polled at the configured interval. After a command it is checked every 10 s for up to 60 s; if the change does not show up, the Home app state is reverted.
+- Refresh log: 'Refresh accepted' means SmartThings received the request, 'Refresh complete — data as of …' means newer data arrived (time in UTC), and 'No newer data after refresh yet' means no newer data arrived within 60 seconds.
 - Reads are paced to stay within the SmartThings status limit (10 per 60 s).
 - When a read or authorization fails, the vehicle shows 'No Response' in the Home app. The plugin does not crash.
 

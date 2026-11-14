@@ -24,6 +24,8 @@ interface Confirmation<T> {
   /** Judged with the value returned by the latest read, not with any cached state. */
   isDone: (value: T) => boolean;
   onTimeout: () => void;
+  /** Called once with the value that satisfied `isDone`. */
+  onDone?: (value: T) => void;
 }
 
 /**
@@ -71,13 +73,14 @@ export class StatusPoller<T = unknown> {
 
   /**
    * Switch to command confirmation: read every `confirmIntervalMs` until `isDone(value)` holds for a freshly
-   * read value, or the timeout. A newer confirmation replaces an older one.
+   * read value, or the timeout. A newer confirmation replaces an older one. `onDone`, when given, is called
+   * once with the value that satisfied `isDone`.
    */
-  confirm(isDone: (value: T) => boolean, onTimeout: () => void): void {
+  confirm(isDone: (value: T) => boolean, onTimeout: () => void, onDone?: (value: T) => void): void {
     if (!this.running) {
       return;
     }
-    this.confirmation = { deadline: Date.now() + this.confirmTimeoutMs, isDone, onTimeout };
+    this.confirmation = { deadline: Date.now() + this.confirmTimeoutMs, isDone, onTimeout, onDone };
     if (!this.reading) {
       this.schedule(this.confirmIntervalMs);
     }
@@ -139,6 +142,11 @@ export class StatusPoller<T = unknown> {
     }
     if (value !== undefined && confirmation.isDone(value)) {
       this.confirmation = undefined;
+      try {
+        confirmation.onDone?.(value);
+      } catch (error) {
+        this.options.log.warn(`명령 확인 완료 처리 오류 / Confirmation done handler error: ${error instanceof Error ? error.message : String(error)}`);
+      }
       this.schedule(this.pollIntervalMs);
       return;
     }

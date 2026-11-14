@@ -32,8 +32,8 @@ export class PollingStatusSource implements StatusSource {
     this.poller.stop();
   }
 
-  confirm(isDone: (status: VehicleStatus) => boolean, onTimeout: () => void): void {
-    this.poller.confirm(isDone, onTimeout);
+  confirm(isDone: (status: VehicleStatus) => boolean, onTimeout: () => void, onDone?: (status: VehicleStatus) => void): void {
+    this.poller.confirm(isDone, onTimeout, onDone);
   }
 
   /**
