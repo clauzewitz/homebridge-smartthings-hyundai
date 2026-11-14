@@ -10,10 +10,28 @@ import { OAuthStore, type StoredApp } from '../oauth/store.js';
 
 /** An error to show in the settings screen. Messages never contain the PAT, client secret or tokens. */
 export class UiRequestError extends Error {
-  constructor(message: string, public readonly status = 400) {
+  /**
+   * @param offerAdditionalApp true only when app creation stopped because the account already has apps from this
+   *   plugin that this Homebridge has no record of; the settings screen may then offer to create another app.
+   */
+  constructor(message: string, public readonly status = 400, public readonly offerAdditionalApp = false) {
     super(message);
     this.name = 'UiRequestError';
   }
+}
+
+/** What the settings screen receives for a failed request (passed as the RequestError details). */
+export interface UiErrorResponse {
+  message: string;
+  details: { status: number; offerAdditionalApp: boolean };
+}
+
+/** Convert any handler error into the response the settings screen gets. Only the dedicated case offers another app. */
+export function toUiErrorResponse(error: unknown): UiErrorResponse {
+  if (error instanceof UiRequestError) {
+    return { message: error.message, details: { status: error.status, offerAdditionalApp: error.offerAdditionalApp } };
+  }
+  return { message: error instanceof Error ? error.message : String(error), details: { status: 500, offerAdditionalApp: false } };
 }
 
 export interface OAuthUiStatus {
@@ -116,6 +134,7 @@ export class OAuthUiHandlers {
             `This account has ${previous.length} app(s) created by this plugin that this Homebridge has no record of. ` +
             'Confirm to create another one (delete unneeded apps with the SmartThings CLI or Developer Center).',
             409,
+            true,
           );
         }
       }

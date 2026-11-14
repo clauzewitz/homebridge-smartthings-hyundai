@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_REDIRECT_URI, OAUTH_TOKEN_URL, SMARTAPPS_URL } from '../src/oauth/constants.js';
 import { OAuthStore } from '../src/oauth/store.js';
-import { OAuthUiHandlers, UiRequestError } from '../src/ui/oauthUiHandlers.js';
+import { OAuthUiHandlers, toUiErrorResponse, UiRequestError } from '../src/ui/oauthUiHandlers.js';
 
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 const CREATED = { app: { appId: 'app-1', appName: 'homebridge-smartthings-hyundai-abc' }, oauthClientId: 'cid-1', oauthClientSecret: 'secret-1' };
@@ -196,5 +196,50 @@ describe('login', () => {
     await store.saveTokens({ accessToken: 'a', refreshToken: 'r', expiresAt: now, reauthRequired: true, lastError: 'invalid_grant' });
 
     expect(await handlers.status()).toMatchObject({ connected: false, reauthRequired: true, lastError: 'invalid_grant' });
+  });
+});
+
+describe('offering another app after a failed creation', () => {
+  async function failure(handlers: OAuthUiHandlers, payload: unknown = { pat: 'temp-pat' }) {
+    return toUiErrorResponse(await handlers.createApp(payload).catch((caught: unknown) => caught));
+  }
+
+  it('offers another app only when the account has unrecorded apps from this plugin', async () => {
+    const { handlers } = setup(apiRoutes({ list: { items: [{ appId: 'old', appName: 'homebridge-smartthings-hyundai-old' }] } }));
+
+    expect((await failure(handlers)).details).toEqual({ status: 409, offerAdditionalApp: true });
+  });
+
+  it('does not offer another app when an app is already saved here', async () => {
+    const { handlers } = setup(apiRoutes());
+    await handlers.createApp({ pat: 'temp-pat' });
+
+    expect((await failure(handlers)).details).toEqual({ status: 409, offerAdditionalApp: false });
+  });
+
+  it.each([
+    ['403 (plan or scope)', 403],
+    ['401 (expired PAT)', 401],
+    ['429 (rate limit)', 429],
+  ])('does not offer another app after %s', async (_label, status) => {
+    const { handlers, fetchMock } = setup(apiRoutes({ create: new Response('', { status }) }));
+
+    const response = await failure(handlers);
+
+    expect(response.details).toEqual({ status, offerAdditionalApp: false });
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1);
+  });
+
+  it('does not offer another app after a network error or a missing PAT', async () => {
+    const { handlers } = setup(() => {
+      throw new TypeError('fetch failed');
+    });
+
+    expect((await failure(handlers)).details).toEqual({ status: 502, offerAdditionalApp: false });
+    expect((await failure(handlers, {})).details).toEqual({ status: 400, offerAdditionalApp: false });
+  });
+
+  it('maps unexpected errors to 500 without offering another app', () => {
+    expect(toUiErrorResponse(new Error('boom'))).toEqual({ message: 'boom', details: { status: 500, offerAdditionalApp: false } });
   });
 });

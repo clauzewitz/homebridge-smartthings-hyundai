@@ -2,7 +2,7 @@
 // Request handling lives in dist/ui/oauthUiHandlers.js (built from src/ui/oauthUiHandlers.ts).
 import { HomebridgePluginUiServer, RequestError } from '@homebridge/plugin-ui-utils';
 
-import { OAuthUiHandlers, UiRequestError } from '../dist/ui/oauthUiHandlers.js';
+import { OAuthUiHandlers, toUiErrorResponse } from '../dist/ui/oauthUiHandlers.js';
 
 class PluginUiServer extends HomebridgePluginUiServer {
   constructor() {
@@ -12,8 +12,8 @@ class PluginUiServer extends HomebridgePluginUiServer {
       try {
         return await handler(payload ?? {});
       } catch (error) {
-        const status = error instanceof UiRequestError ? error.status : 500;
-        throw new RequestError(error instanceof Error ? error.message : String(error), { status });
+        const { message, details } = toUiErrorResponse(error);
+        throw new RequestError(message, details);
       }
     });
     route('/status', () => handlers.status());

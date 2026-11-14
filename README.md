@@ -174,8 +174,6 @@ SmartThings CLI 나 Developer Center 에서 직접 만든 앱을 쓸 때는 **'�
 - PAT 를 발급한 SmartThings 계정이 구독한 계정과 같은지
 - 구독 전에 발급한 PAT 라면 새 PAT 로 다시 시도
 
-오류 뒤에 '새 앱을 하나 더 만들까요?' 확인 창이 뜨면 **취소** 를 누르세요.
-
 ### 토큰과 client 정보
 
 - 저장 위치: Homebridge 저장 폴더 아래 `smartthings-hyundai/`
@@ -426,8 +424,6 @@ If 'Create app' is refused with a 403, SmartThings gives no reason, so the plugi
 - that the PAT has the `w:smartapps` scope
 - that the PAT was issued by the same SmartThings account that holds the subscription
 - if the PAT was issued before you subscribed, try again with a new PAT
-
-If a 'Create another app anyway?' dialog appears after the error, click **Cancel**.
 
 ### Tokens and client credentials
 
