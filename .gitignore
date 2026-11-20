@@ -12,6 +12,17 @@
 *.pem
 tokens.json
 oauth-*.json
+*.key
+*.p12
+.npmrc
+.envrc
+# SSH private keys (public keys end in .pub and stay visible)
+id_rsa
+id_dsa
+id_ecdsa
+id_ecdsa_sk
+id_ed25519
+id_ed25519_sk
 
 # Local Homebridge storage used by `npm run watch` (contains pairing data and tokens)
 .homebridge-dev/
