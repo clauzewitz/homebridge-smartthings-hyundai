@@ -29,9 +29,9 @@
 | 항목 | 상태 |
 |---|---|
 | OAuth 연결(기본) | 구현함. **실제 SmartThings API 로는 아직 검증하지 않음** — 앱 만들기, 로그인, 토큰 발급·갱신 모두 해당 |
-| 차량 상태 조회 | PAT 보조 모드로 차량 1대에서 확인 |
-| 차량 명령(잠금·잠금 해제·공조) | **실차 시험 전** |
-| 홈 앱 페어링 | 실사용 환경에서 시험 전 |
+| 차량 상태 조회 | PAT 보조 모드로 차량 1대에서 확인(Homebridge Docker 설치본 포함) |
+| 차량 명령 | 새로고침: 차량 1대에서 확인(요청 접수부터 새 데이터 도착까지). 잠금·잠금 해제·공조·연결 확인: **실차 시험 전** |
+| 홈 앱 페어링 | 차량 1대로 확인(Homebridge Docker 설치본) |
 | 다른 차종(현대·기아, 내연기관) | 확인하지 않음 |
 | PAT 보조 모드 | 동작함. 다만 PAT 가 24시간 뒤 만료되어 장기 사용에는 맞지 않음 |
 
@@ -224,7 +224,8 @@ accessory 의 UUID 는 SmartThings 디바이스 ID 로 만들어지므로 재시
 
 - 차량 이름은 SmartThings 앱의 이름을 씁니다. 홈 앱에서 쓸 수 없는 문자(이모지, 대괄호 등)는 빼고, 이름 전체가 64자를 넘으면 차량 이름 쪽을 줄입니다. SmartThings 에서 차량 이름을 바꾸면 기본 이름도 따라 바뀝니다.
 - 홈 앱에서 직접 바꾼 이름은 건드리지 않습니다.
-- 아직 실제 기기에서 확인하지 않았습니다. 홈 앱이 이름 앞의 차량 이름(또는 방 이름과 같은 앞 단어)을 숨기거나, 이미 페어링한 accessory 에는 바뀐 이름이 바로 보이지 않을 수 있습니다. 그럴 때는 홈 앱에서 이름을 바꾸거나 기기를 다시 추가하세요.
+- 실제 기기에서 차량 이름이 붙어 보이는 것을 확인했습니다. 아직 확인하지 않은 것: 이미 페어링한 accessory 에 바로 반영되는지, 홈 앱에서 바꾼 이름이 유지되는지, 이 옵션을 끄면 원래 이름으로 돌아오는지, Siri 명령, SmartThings 에서 차량 이름을 바꿨을 때 따라오는지.
+- 홈 앱은 방 이름과 같은 앞 단어를 숨길 수 있습니다. 이미 페어링한 accessory 에 바뀐 이름이 바로 보이지 않으면 홈 앱에서 이름을 바꾸거나 기기를 다시 추가하세요.
 
 #### Siri 집 전체 명령 주의
 
@@ -299,9 +300,9 @@ A Homebridge plugin that lets you monitor and control **Hyundai, Genesis and Kia
 | Item | Status |
 |---|---|
 | OAuth connection (default) | Implemented. **Not yet verified against the live SmartThings API** — this covers app creation, login, and token issue and refresh |
-| Reading vehicle status | Confirmed with one vehicle in supplementary PAT mode |
-| Vehicle commands (lock, unlock, climate) | **Not yet tested on a real vehicle** |
-| Home app pairing | Not yet tested in a real setup |
+| Reading vehicle status | Confirmed with one vehicle in supplementary PAT mode (including a Homebridge Docker install) |
+| Vehicle commands | Refresh: confirmed with one vehicle (from the accepted request to newer data arriving). Lock, unlock, climate and ping: **not yet tested on a real vehicle** |
+| Home app pairing | Confirmed with one vehicle (Homebridge Docker install) |
 | Other models (Hyundai, Kia, combustion engines) | Not checked |
 | Supplementary PAT mode | Works, but PATs expire after 24 hours, so it is not suitable for long-term use |
 
@@ -494,7 +495,8 @@ So that you can tell which vehicle a tile belongs to, the SmartThings vehicle na
 
 - The name comes from the SmartThings app. Characters the Home app does not accept (emoji, square brackets, ...) are dropped, and if the whole name is longer than 64 characters the vehicle name is shortened. When you rename the vehicle in SmartThings, the default names follow.
 - Names you changed in the Home app are never touched.
-- Not yet checked on a real device: the Home app may hide the vehicle name at the start of the name (or a first word that matches the room name), and an accessory that is already paired may not show the new names right away. In that case rename it in the Home app or add the accessory again.
+- Confirmed on a real device: the vehicle name shows in front of the service names. Not yet checked: whether an accessory that is already paired picks up the new names right away, whether names changed in the Home app are kept, whether turning this option off restores the plain names, Siri commands, and whether renaming the vehicle in SmartThings is followed.
+- The Home app may hide a first word that matches the room name. If an accessory that is already paired does not show the new names, rename it in the Home app or add the accessory again.
 
 #### Home-wide Siri commands
 
